@@ -62,7 +62,9 @@ const Login = () => {
         <>
             <div className="site-header">
                 <div className="container container_form">
-                    {/* Muestra mensajes de estado */}
+                    
+                    <div className="form">
+                        {/* Muestra mensajes de estado */}
                     {successMessage && (
                         <p
                             style={{
@@ -81,7 +83,6 @@ const Login = () => {
                             {error}
                         </p>
                     )}
-                    <div className="form">
                         <form onSubmit={handleSubmit} className="form">
                             <h2>Iniciar Session</h2>
                             <div style={{ marginBottom: "15px" }}>

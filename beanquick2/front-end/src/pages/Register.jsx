@@ -62,8 +62,8 @@ const Register = () => {
         <div className="site-header">
             <div className='container container_form'>
                 {/* Muestra errores */}
-                {error && <p style={{ color: 'red', border: '1px solid red', padding: '10px' }}>{error}</p>}
                 <div className="form">
+                    {error && <p style={{ color: 'red', border: '1px solid red', padding: '10px' }}>{error}</p>}
                     <form onSubmit={handleSubmit} className='form'>
                         <h2>registrate</h2>
                         <div style={{ marginBottom: '15px' }}>
