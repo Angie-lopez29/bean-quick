@@ -25,22 +25,25 @@ const MisPedidos = () => {
 
     // --- NUEVA FUNCIÓN PARA CANCELAR ---
     const cancelarPedido = async (id) => {
-        if (!window.confirm("¿Estás seguro de que deseas cancelar este pedido?")) return;
+    if (!window.confirm("¿Estás seguro de que deseas cancelar este pedido?")) return;
 
-        const token = localStorage.getItem('AUTH_TOKEN');
-        try {
-            await axios.post(`http://127.0.0.1:8000/api/cliente/pedidos/${id}/cancelar`, {}, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
-            
-            // Opción 1: Quitarlo de la lista inmediatamente
-            setPedidos(pedidos.filter(p => p.id !== id));
-            alert("Pedido cancelado con éxito.");
-        } catch (error) {
-            console.error("Error al cancelar", error);
-            alert(error.response?.data?.message || "No se pudo cancelar el pedido.");
-        }
-    };
+    const token = localStorage.getItem('AUTH_TOKEN');
+    try {
+        const res = await axios.post(`http://127.0.0.1:8000/api/cliente/pedidos/${id}/cancelar`, {}, {
+            headers: { Authorization: `Bearer ${token}` }
+        });
+        
+        // --- CAMBIO AQUÍ: En lugar de filtrar (borrar), actualizamos el objeto ---
+        setPedidos(pedidos.map(p => 
+            p.id === id ? { ...p, estado: 'Cancelado' } : p
+        ));
+
+        alert("Pedido cancelado con éxito.");
+    } catch (error) {
+        console.error("Error al cancelar", error);
+        alert(error.response?.data?.message || "No se pudo cancelar el pedido.");
+    }
+};
 
     const pedidosFiltrados = filtro === 'todos' 
         ? pedidos 
