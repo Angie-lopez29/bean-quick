@@ -88,6 +88,8 @@ Route::prefix('carrito')->group(function () {
     Route::post('/vaciar', [CarritoController::class, 'vaciar']); // Cambiado de 'delete' a 'post' y 'clear' a 'vaciar'
 });
         Route::post('/pedidos', [PedidoController::class, 'store']);
+        // Rutas para clientes (dentro del grupo de autenticados)
+        Route::post('/pedidos/{id}/cancelar', [PedidoController::class, 'cancelar']);
         Route::get('/mis-pedidos', [PedidoController::class, 'indexCliente']);
     });
 });

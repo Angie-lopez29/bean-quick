@@ -129,6 +129,41 @@ class PedidoController extends Controller
     } catch (\Exception $e) {
         return response()->json(['error' => $e->getMessage()], 500);
     }
+}public function cancelar($id): JsonResponse
+{
+    try {
+        $user = Auth::user();
+
+        // Buscamos el pedido validando que sea del usuario
+        $pedido = Pedido::where('id', $id)
+            ->where('user_id', $user->id)
+            ->first();
+
+        if (!$pedido) {
+            return response()->json(['message' => 'Pedido no encontrado'], 404);
+        }
+
+        // Verificamos estado (usando strtolower para evitar fallos por mayúsculas)
+        if (strtolower($pedido->estado) !== 'pendiente') {
+            return response()->json([
+                'message' => 'No puedes cancelar un pedido que ya está: ' . $pedido->estado
+            ], 400);
+        }
+$pedido->update([
+            'estado' => 'Cancelado'
+        ]);
+        return response()->json([
+            'message' => 'Pedido cancelado con éxito',
+            'pedido' => $pedido
+        ]);
+
+    } catch (\Exception $e) {
+        // Esto enviará el mensaje de error real a React en lugar de solo un "500"
+        return response()->json([
+            'message' => 'Error en el servidor',
+            'error' => $e->getMessage()
+        ], 500);
+    }
 }
     /**
      * Actualizar el estado del pedido (Flujo de Empresa).

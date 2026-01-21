@@ -1,28 +1,47 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
-import { FaChevronDown, FaChevronUp, FaCoffee, FaClock, FaMapMarkerAlt, FaFilter } from 'react-icons/fa';
+import { FaChevronDown, FaChevronUp, FaCoffee, FaClock, FaMapMarkerAlt, FaTimesCircle } from 'react-icons/fa';
 
 const MisPedidos = () => {
     const [pedidos, setPedidos] = useState([]);
     const [abierto, setAbierto] = useState(null);
-    const [filtro, setFiltro] = useState('todos'); // Estado para el filtro
+    const [filtro, setFiltro] = useState('todos');
 
     useEffect(() => {
-        const fetchPedidos = async () => {
-            const token = localStorage.getItem('AUTH_TOKEN');
-            try {
-                const res = await axios.get('http://127.0.0.1:8000/api/cliente/mis-pedidos', {
-                    headers: { Authorization: `Bearer ${token}` }
-                });
-                setPedidos(res.data);
-            } catch (error) {
-                console.error("Error al cargar pedidos", error);
-            }
-        };
         fetchPedidos();
     }, []);
 
-    // --- LÓGICA DE FILTRADO ---
+    const fetchPedidos = async () => {
+        const token = localStorage.getItem('AUTH_TOKEN');
+        try {
+            const res = await axios.get('http://127.0.0.1:8000/api/cliente/mis-pedidos', {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            setPedidos(res.data);
+        } catch (error) {
+            console.error("Error al cargar pedidos", error);
+        }
+    };
+
+    // --- NUEVA FUNCIÓN PARA CANCELAR ---
+    const cancelarPedido = async (id) => {
+        if (!window.confirm("¿Estás seguro de que deseas cancelar este pedido?")) return;
+
+        const token = localStorage.getItem('AUTH_TOKEN');
+        try {
+            await axios.post(`http://127.0.0.1:8000/api/cliente/pedidos/${id}/cancelar`, {}, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            
+            // Opción 1: Quitarlo de la lista inmediatamente
+            setPedidos(pedidos.filter(p => p.id !== id));
+            alert("Pedido cancelado con éxito.");
+        } catch (error) {
+            console.error("Error al cancelar", error);
+            alert(error.response?.data?.message || "No se pudo cancelar el pedido.");
+        }
+    };
+
     const pedidosFiltrados = filtro === 'todos' 
         ? pedidos 
         : pedidos.filter(p => p.estado.toLowerCase() === filtro.toLowerCase());
@@ -37,6 +56,7 @@ const MisPedidos = () => {
             case 'preparando': return { color: '#3498db', background: '#ebf5fb' };
             case 'listo': return { color: '#27ae60', background: '#eafaf1' };
             case 'entregado': return { color: '#7f8c8d', background: '#f4f6f7' };
+            case 'cancelado': return { color: '#e74c3c', background: '#f9ebea' };
             default: return { color: '#333', background: '#eee' };
         }
     };
@@ -45,9 +65,8 @@ const MisPedidos = () => {
         <div style={styles.container}>
             <h2 style={styles.title}><FaCoffee /> Mis Pedidos</h2>
 
-            {/* --- SUBMENÚ DE FILTROS --- */}
             <div style={styles.filterMenu}>
-                {['todos', 'pendiente', 'preparando', 'listo', 'entregado'].map((estado) => (
+                {['todos', 'pendiente', 'preparando', 'listo', 'entregado', 'cancelado'].map((estado) => (
                     <button
                         key={estado}
                         onClick={() => setFiltro(estado)}
@@ -78,9 +97,7 @@ const MisPedidos = () => {
                                             style={styles.brandLogo} 
                                         />
                                         <div style={styles.brandInfo}>
-                                            <span style={styles.brandName}>
-                                                {pedido.empresa?.nombre|| 'Establecimiento'}
-                                            </span>
+                                            <span style={styles.brandName}>{pedido.empresa?.nombre || 'Establecimiento'}</span>
                                             <span style={styles.orderId}>Pedido #{pedido.id}</span>
                                         </div>
                                     </div>
@@ -101,6 +118,17 @@ const MisPedidos = () => {
                                         <FaMapMarkerAlt style={{color: '#6f4e37'}} /> 
                                         <strong>Lugar:</strong> {pedido.empresa?.direccion}
                                     </p>
+                                    
+                                    {/* --- BOTÓN DE CANCELAR: Solo si está pendiente --- */}
+                                    {pedido.estado.toLowerCase() === 'pendiente' && (
+                                        <button 
+                                            onClick={() => cancelarPedido(pedido.id)}
+                                            style={styles.cancelBtn}
+                                        >
+                                            <FaTimesCircle /> Cancelar Pedido
+                                        </button>
+                                    )}
+
                                     <hr style={styles.divider} />
                                     <div style={styles.prodList}>
                                         {pedido.productos.map((prod) => (
@@ -128,37 +156,14 @@ const MisPedidos = () => {
     );
 };
 
+// --- ESTILOS ADICIONALES ---
 const styles = {
+    // ... mantén tus estilos anteriores y agrega/modifica estos:
     container: { maxWidth: '600px', margin: '20px auto', padding: '0 20px', paddingBottom: '80px' },
     title: { textAlign: 'center', color: '#6f4e37', marginBottom: '20px' },
-    
-    /* Estilos del Submenú */
-    filterMenu: { 
-        display: 'flex', 
-        gap: '10px', 
-        overflowX: 'auto', 
-        paddingBottom: '15px', 
-        marginBottom: '20px',
-        scrollbarWidth: 'none' // Oculta scroll en Firefox
-    },
-    filterBtn: { 
-        padding: '8px 16px', 
-        borderRadius: '20px', 
-        border: '1px solid #ddd', 
-        background: 'white', 
-        cursor: 'pointer', 
-        whiteSpace: 'nowrap',
-        fontSize: '14px',
-        color: '#666',
-        transition: '0.3s'
-    },
-    filterBtnActive: { 
-        background: '#6f4e37', 
-        color: 'white', 
-        borderColor: '#6f4e37',
-        fontWeight: 'bold' 
-    },
-
+    filterMenu: { display: 'flex', gap: '10px', overflowX: 'auto', paddingBottom: '15px', marginBottom: '20px' },
+    filterBtn: { padding: '8px 16px', borderRadius: '20px', border: '1px solid #ddd', background: 'white', cursor: 'pointer', whiteSpace: 'nowrap', fontSize: '14px', color: '#666' },
+    filterBtnActive: { background: '#6f4e37', color: 'white', borderColor: '#6f4e37', fontWeight: 'bold' },
     list: { display: 'flex', flexDirection: 'column', gap: '15px' },
     card: { background: 'white', borderRadius: '12px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)', overflow: 'hidden', border: '1px solid #eee' },
     cardHeader: { padding: '15px', cursor: 'pointer', display: 'flex', flexDirection: 'column', gap: '8px' },
@@ -172,6 +177,25 @@ const styles = {
     headerSub: { display: 'flex', justifyContent: 'space-between', color: '#666', fontSize: '14px', alignItems: 'center' },
     details: { padding: '15px', background: '#f9f9f9', borderTop: '1px solid #eee' },
     detailInfo: { fontSize: '13px', color: '#555', marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '5px' },
+    
+    // Estilo para el botón de cancelar
+    cancelBtn: {
+        width: '100%',
+        padding: '10px',
+        background: '#f9ebea',
+        color: '#e74c3c',
+        border: '1px solid #e74c3c',
+        borderRadius: '8px',
+        cursor: 'pointer',
+        fontWeight: 'bold',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: '8px',
+        marginTop: '10px',
+        transition: '0.3s'
+    },
+    
     divider: { border: '0', borderTop: '1px solid #eee', margin: '15px 0' },
     prodItem: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' },
     prodLeft: { display: 'flex', alignItems: 'center', gap: '10px' },

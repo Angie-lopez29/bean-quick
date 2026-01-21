@@ -12,24 +12,23 @@ class CarritoController extends Controller
 {
     /**
      * Mostrar el carrito del usuario autenticado.
-     * Adaptado para API (JSON).
-     */public function index()
-{
-    $user = Auth::user();
-    $carrito = Carrito::firstOrCreate(['user_id' => $user->id]);
+     */
+    public function index()
+    {
+        $user = Auth::user();
+        $carrito = Carrito::firstOrCreate(['user_id' => $user->id]);
 
-    $productos = $carrito->productos()
-        ->with('empresa')
-        ->withPivot('cantidad')
-        ->get()
-        ->map(function ($producto) {
-            // Forzamos que el precio sea numérico antes de enviarlo a React
-            $producto->precio = (float) $producto->precio;
-            return $producto;
-        });
+        $productos = $carrito->productos()
+            ->with('empresa') // Carga la empresa
+            ->withPivot('cantidad')
+            ->get()
+            ->map(function ($producto) {
+                $producto->precio = (float) $producto->precio;
+                return $producto;
+            });
 
-    return response()->json($productos);
-}
+        return response()->json($productos);
+    }
 
     /**
      * Agregar un producto al carrito.
@@ -42,8 +41,7 @@ class CarritoController extends Controller
     
         $user = Auth::user();
         $carrito = Carrito::firstOrCreate(['user_id' => $user->id]);
-        $producto = Producto::findOrFail($productoId);
-    
+        
         $carritoProducto = $carrito->productos()->where('producto_id', $productoId)->first();
     
         if ($carritoProducto) {
@@ -55,7 +53,8 @@ class CarritoController extends Controller
     
         return response()->json([
             'message' => 'Producto agregado al carrito correctamente.',
-            'productos' => $carrito->productos()->withPivot('cantidad')->get() // Devolvemos el carrito actualizado
+            // CORRECCIÓN: Agregamos with('empresa')
+            'productos' => $carrito->productos()->with(['empresa'])->withPivot('cantidad')->get()
         ]);
     }
 
@@ -76,7 +75,8 @@ class CarritoController extends Controller
 
         return response()->json([
             'message' => 'Cantidad actualizada correctamente.',
-            'productos' => $carrito->productos()->withPivot('cantidad')->get()
+            // CORRECCIÓN: Agregamos with('empresa')
+            'productos' => $carrito->productos()->with(['empresa'])->withPivot('cantidad')->get()
         ]);
     }
 
@@ -93,7 +93,8 @@ class CarritoController extends Controller
 
         return response()->json([
             'message' => 'Producto eliminado del carrito.',
-            'productos' => $carrito->productos()->withPivot('cantidad')->get()
+            // CORRECCIÓN: Agregamos with('empresa')
+            'productos' => $carrito->productos()->with(['empresa'])->withPivot('cantidad')->get()
         ]);
     }
 

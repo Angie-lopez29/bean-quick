@@ -19,7 +19,7 @@ return new class extends Migration
             $table->decimal('total', 10, 2);
             $table->time('hora_recogida')->nullable();
             // En el archivo de migración de la tabla pedidos
-$table->enum('estado', ['Pendiente', 'Preparando', 'Listo', 'Entregado'])->default('Pendiente');
+$table->enum('estado', ['Pendiente', 'Preparando', 'Listo', 'Entregado','Cancelado'])->default('Pendiente');
             
             $table->timestamps();
         });

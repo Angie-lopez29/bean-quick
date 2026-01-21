@@ -7,18 +7,28 @@ const CarritoFlotante = ({ carrito, setCarrito, actualizarCantidad, confirmarPed
     const [horasPorEmpresa, setHorasPorEmpresa] = useState({});
 
     // --- AGRUPAR PRODUCTOS POR EMPRESA ---
+    // --- AGRUPAR PRODUCTOS POR EMPRESA ---
+    // --- AGRUPAR PRODUCTOS POR EMPRESA ---
     const carritoAgrupado = carrito.reduce((acc, producto) => {
-        const empresa = producto.empresa; 
-        const empresaId = producto.empresa_id;
-        
-        // CORRECCIÓN: Aseguramos que el nombre se asigne correctamente
-        const nombreEmpresa = empresa?.nombre_establecimiento || empresa?.nombre || "Tienda";
-        
-        const logoEmpresa = empresa?.logo 
-            ? `http://127.0.0.1:8000/storage/${empresa.logo}` 
-            : null; 
+        // Intentamos obtener el ID de la empresa de varias formas posibles
+        const empresaId = producto.empresa_id || producto.empresa?.id;
+
+        if (!empresaId) return acc; // Si no hay ID, saltamos este producto
 
         if (!acc[empresaId]) {
+            // BUSQUEDA DE NOMBRE: 
+            // 1. De la relación empresa
+            // 2. Si desaparece por el update, lo buscamos en el producto mismo
+            // 3. Si no, un genérico
+            const nombreEmpresa = producto.empresa?.nombre_establecimiento ||
+                producto.empresa?.nombre ||
+                producto.nombre_tienda_aux || // Nombre guardado antes
+                "Tienda";
+
+            const logoEmpresa = producto.empresa?.logo
+                ? `http://127.0.0.1:8000/storage/${producto.empresa.logo}`
+                : null;
+
             acc[empresaId] = {
                 id: empresaId,
                 nombre: nombreEmpresa,
@@ -26,10 +36,14 @@ const CarritoFlotante = ({ carrito, setCarrito, actualizarCantidad, confirmarPed
                 productos: []
             };
         }
+
+        // Antes de meter el producto, le "inyectamos" el nombre de la tienda 
+        // por si en el siguiente render el servidor no lo manda
+        producto.nombre_tienda_aux = acc[empresaId].nombre;
+
         acc[empresaId].productos.push(producto);
         return acc;
     }, {});
-
     const toggleSeccion = (id) => {
         setSeccionesAbiertas(prev => ({ ...prev, [id]: !prev[id] }));
     };
@@ -44,7 +58,7 @@ const CarritoFlotante = ({ carrito, setCarrito, actualizarCantidad, confirmarPed
 
         const productosAEnviar = carrito.filter(p => p.empresa_id == empresaId);
         const exito = await confirmarPedido("Recogida en Local", hora, empresaId, productosAEnviar);
-        
+
         if (exito) {
             setHorasPorEmpresa(prev => {
                 const nuevas = { ...prev };
@@ -65,22 +79,20 @@ const CarritoFlotante = ({ carrito, setCarrito, actualizarCantidad, confirmarPed
                 <div style={styles.overlay} onClick={() => setIsOpen(false)}>
                     <div style={styles.sidebar} onClick={e => e.stopPropagation()}>
                         <div style={styles.header}>
-                            <h3 style={{margin:0}}>Mi Carrito</h3>
-                            <FaTimes style={{cursor:'pointer'}} onClick={() => setIsOpen(false)} />
+                            <h3 style={{ margin: 0 }}>Mi Carrito</h3>
+                            <FaTimes style={{ cursor: 'pointer' }} onClick={() => setIsOpen(false)} />
                         </div>
 
                         <div style={styles.itemsContainer}>
                             {Object.keys(carritoAgrupado).length === 0 ? (
-                                <p style={{textAlign:'center', marginTop: '40px', color: '#888'}}>No hay productos.</p>
+                                <p style={{ textAlign: 'center', marginTop: '40px', color: '#888' }}>No hay productos.</p>
                             ) : (
                                 Object.keys(carritoAgrupado).map((empresaId) => {
                                     const tienda = carritoAgrupado[empresaId];
                                     const estaAbierto = seccionesAbiertas[empresaId] !== false;
-                                    
-                                    // CORRECCIÓN NaN: Forzamos el precio y la cantidad a Number
+
                                     const totalEmpresa = tienda.productos.reduce((s, p) => {
                                         const precio = Number(p.precio) || 0;
-                                        // Laravel usa 'pivot' cuando carga relaciones belongsToMany
                                         const cantidad = Number(p.pivot?.cantidad || p.cantidad || 0);
                                         return s + (precio * cantidad);
                                     }, 0);
@@ -102,28 +114,32 @@ const CarritoFlotante = ({ carrito, setCarrito, actualizarCantidad, confirmarPed
                                             {estaAbierto && (
                                                 <div style={styles.productosDetalle}>
                                                     {tienda.productos.map(prod => {
-                                                        // Variables protegidas para evitar NaN en cada fila
                                                         const pPrecio = Number(prod.precio) || 0;
                                                         const pCant = Number(prod.pivot?.cantidad || prod.cantidad || 0);
 
+                                                        // CORRECCIÓN IMAGEN PRODUCTO: Concatenamos ruta de productos
+                                                        const imgUrl = prod.imagen
+                                                            ? `http://127.0.0.1:8000/storage/${prod.imagen}`
+                                                            : '/placeholder-producto.jpg';
+
                                                         return (
                                                             <div key={prod.id} style={styles.productoFila}>
-                                                                <img src={prod.imagen_url} style={styles.prodImg} alt="" />
-                                                                <div style={{flex: 1}}>
+                                                                <img src={imgUrl} style={styles.prodImg} alt={prod.nombre} />
+                                                                <div style={{ flex: 1 }}>
                                                                     <div style={styles.prodHeader}>
                                                                         <span style={styles.prodNombre}>{prod.nombre}</span>
-                                                                        <div style={{display: 'flex', alignItems: 'center', gap: '8px'}}>
+                                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                                                                             <strong>${(pPrecio * pCant).toLocaleString()}</strong>
-                                                                            <FaTrash 
-                                                                                style={styles.btnEliminar} 
-                                                                                onClick={() => eliminarDelCarrito(prod.id)} 
+                                                                            <FaTrash
+                                                                                style={styles.btnEliminar}
+                                                                                onClick={() => eliminarDelCarrito(prod.id)}
                                                                             />
                                                                         </div>
                                                                     </div>
                                                                     <div style={styles.controles}>
-                                                                        <button style={styles.qtyBtn} onClick={() => actualizarCantidad(prod.id, pCant - 1)}><FaMinus size={10}/></button>
+                                                                        <button style={styles.qtyBtn} onClick={() => actualizarCantidad(prod.id, pCant - 1)}><FaMinus size={10} /></button>
                                                                         <span>{pCant}</span>
-                                                                        <button style={styles.qtyBtn} onClick={() => actualizarCantidad(prod.id, pCant + 1)}><FaPlus size={10}/></button>
+                                                                        <button style={styles.qtyBtn} onClick={() => actualizarCantidad(prod.id, pCant + 1)}><FaPlus size={10} /></button>
                                                                     </div>
                                                                 </div>
                                                             </div>
@@ -132,9 +148,9 @@ const CarritoFlotante = ({ carrito, setCarrito, actualizarCantidad, confirmarPed
 
                                                     <div style={styles.empresaFooter}>
                                                         <div style={styles.horaCaja}>
-                                                            <label style={{fontSize: '12px', color: '#666'}}><FaClock /> Hora de Recogida:</label>
-                                                            <input 
-                                                                type="time" 
+                                                            <label style={{ fontSize: '12px', color: '#666' }}><FaClock /> Hora de Recogida:</label>
+                                                            <input
+                                                                type="time"
                                                                 value={horasPorEmpresa[empresaId] || ""}
                                                                 onChange={(e) => handleHoraChange(empresaId, e.target.value)}
                                                                 style={styles.inputHora}
@@ -144,7 +160,7 @@ const CarritoFlotante = ({ carrito, setCarrito, actualizarCantidad, confirmarPed
                                                             <span>Total {tienda.nombre}:</span>
                                                             <strong>${totalEmpresa.toLocaleString()}</strong>
                                                         </div>
-                                                        <button 
+                                                        <button
                                                             style={{
                                                                 ...styles.btnConfirmar,
                                                                 opacity: !horasPorEmpresa[empresaId] ? 0.6 : 1,
@@ -170,7 +186,7 @@ const CarritoFlotante = ({ carrito, setCarrito, actualizarCantidad, confirmarPed
     );
 };
 
-// ... (los estilos se mantienen iguales)
+// ... (Los estilos se mantienen iguales)
 const styles = {
     floatingBtn: { position: 'fixed', bottom: '20px', right: '20px', backgroundColor: '#6f4e37', color: 'white', padding: '15px', borderRadius: '50%', cursor: 'pointer', zIndex: 1000, boxShadow: '0 4px 10px rgba(0,0,0,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center' },
     badge: { position: 'absolute', top: '-5px', right: '-5px', background: 'red', color: 'white', borderRadius: '50%', padding: '2px 7px', fontSize: '12px', border: '2px solid white', fontWeight: 'bold' },
