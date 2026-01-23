@@ -7,6 +7,7 @@ const MisCalificaciones = () => {
     const [loading, setLoading] = useState(true);
     const [editingId, setEditingId] = useState(null);
     const [editForm, setEditForm] = useState({ estrellas: 5, comentario: '' });
+    const [hoverStars, setHoverStars] = useState(null); // Para el efecto visual al pasar el mouse
 
     const fetchCalificaciones = async () => {
         const token = localStorage.getItem('AUTH_TOKEN');
@@ -30,7 +31,7 @@ const MisCalificaciones = () => {
                 headers: { Authorization: `Bearer ${localStorage.getItem('AUTH_TOKEN')}` }
             });
             fetchCalificaciones();
-        } catch (error) { alert("Error al eliminar"); }
+        } catch (error) { alert("Error al eliminar"+error); }
     };
 
     const handleEditClick = (cal) => {
@@ -45,7 +46,7 @@ const MisCalificaciones = () => {
             });
             setEditingId(null);
             fetchCalificaciones();
-        } catch (error) { alert("Error al actualizar"); }
+        } catch (error) { alert("Error al actualizar"+error); }
     };
 
     if (loading) return <div style={styles.loading}>Cargando...</div>;
@@ -71,20 +72,38 @@ const MisCalificaciones = () => {
 
                         {editingId === cal.id ? (
                             <div style={styles.editArea}>
-                                <select 
-                                    value={editForm.estrellas} 
-                                    onChange={(e) => setEditForm({...editForm, estrellas: e.target.value})}
-                                    style={styles.select}
-                                >
-                                    {[5,4,3,2,1].map(n => <option key={n} value={n}>{n} Estrellas</option>)}
-                                </select>
+                                <label style={styles.label}>Tu nueva calificación:</label>
+                                <div style={styles.interactiveStars}>
+                                    {[...Array(5)].map((_, i) => {
+                                        const ratingValue = i + 1;
+                                        return (
+                                            <label key={i}>
+                                                <input
+                                                    type="radio"
+                                                    name="rating"
+                                                    value={ratingValue}
+                                                    onClick={() => setEditForm({ ...editForm, estrellas: ratingValue })}
+                                                    style={{ display: 'none' }}
+                                                />
+                                                <FaStar
+                                                    size={25}
+                                                    style={{ cursor: 'pointer', transition: 'color 200ms' }}
+                                                    color={ratingValue <= (hoverStars || editForm.estrellas) ? "#FFD700" : "#ddd"}
+                                                    onMouseEnter={() => setHoverStars(ratingValue)}
+                                                    onMouseLeave={() => setHoverStars(null)}
+                                                />
+                                            </label>
+                                        );
+                                    })}
+                                </div>
                                 <textarea 
+                                    placeholder="Escribe tu comentario aquí..."
                                     value={editForm.comentario}
                                     onChange={(e) => setEditForm({...editForm, comentario: e.target.value})}
                                     style={styles.textarea}
                                 />
                                 <div style={styles.actions}>
-                                    <button onClick={() => handleUpdate(cal.id)} style={styles.btnSave}><FaSave /> Guardar</button>
+                                    <button onClick={() => handleUpdate(cal.id)} style={styles.btnSave}><FaSave /> Guardar cambios</button>
                                     <button onClick={() => setEditingId(null)} style={styles.btnCancel}><FaTimes /> Cancelar</button>
                                 </div>
                             </div>
@@ -93,7 +112,7 @@ const MisCalificaciones = () => {
                                 <div style={styles.stars}>
                                     {[...Array(5)].map((_, i) => <FaStar key={i} color={i < cal.estrellas ? "#FFD700" : "#ddd"} />)}
                                 </div>
-                                <p style={styles.comment}>"{cal.comentario}"</p>
+                                <p style={styles.comment}>{cal.comentario ? `"${cal.comentario}"` : "Sin comentario"}</p>
                                 <div style={styles.footerActions}>
                                     <button onClick={() => handleEditClick(cal)} style={styles.btnEdit}><FaEdit /> Editar</button>
                                     <button onClick={() => handleDelete(cal.id)} style={styles.btnDelete}><FaTrash /> Eliminar</button>
@@ -107,28 +126,30 @@ const MisCalificaciones = () => {
     );
 };
 
+// Estilos mejorados
 const styles = {
-    container: { padding: '120px 20px', maxWidth: '800px', margin: '0 auto' },
-    title: { textAlign: 'center', color: '#3e2723', marginBottom: '30px' },
+    container: { padding: '120px 20px', maxWidth: '800px', margin: '0 auto', minHeight: '100vh' },
+    title: { textAlign: 'center', color: '#3e2723', marginBottom: '40px', fontSize: '2rem' },
     list: { display: 'flex', flexDirection: 'column', gap: '20px' },
-    card: { background: '#fff', borderRadius: '15px', padding: '20px', boxShadow: '0 5px 15px rgba(0,0,0,0.05)', border: '1px solid #efebe9' },
-    productSection: { display: 'flex', gap: '20px', marginBottom: '15px', borderBottom: '1px solid #f5f5f5', paddingBottom: '15px' },
-    img: { width: '80px', height: '80px', borderRadius: '10px', objectFit: 'cover' },
-    prodTitle: { margin: 0, fontSize: '18px', color: '#3e2723' },
-    prodDesc: { fontSize: '13px', color: '#757575', margin: '5px 0' },
-    store: { fontSize: '12px', color: '#6F4E37', fontWeight: 'bold' },
-    stars: { marginBottom: '10px' },
-    comment: { fontStyle: 'italic', color: '#5d4037', fontSize: '14px' },
-    footerActions: { display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '15px' },
-    btnEdit: { padding: '8px 15px', border: '1px solid #6F4E37', background: 'none', color: '#6F4E37', borderRadius: '5px', cursor: 'pointer' },
-    btnDelete: { padding: '8px 15px', border: 'none', background: '#ffebee', color: '#c62828', borderRadius: '5px', cursor: 'pointer' },
-    editArea: { display: 'flex', flexDirection: 'column', gap: '10px' },
-    select: { padding: '8px', borderRadius: '5px', border: '1px solid #ddd' },
-    textarea: { padding: '10px', borderRadius: '5px', border: '1px solid #ddd', minHeight: '80px' },
-    actions: { display: 'flex', gap: '10px' },
-    btnSave: { background: '#6F4E37', color: '#fff', border: 'none', padding: '10px 20px', borderRadius: '5px', cursor: 'pointer' },
-    btnCancel: { background: '#9e9e9e', color: '#fff', border: 'none', padding: '10px 20px', borderRadius: '5px', cursor: 'pointer' },
-    loading: { textAlign: 'center', padding: '100px', color: '#6F4E37' }
+    card: { background: '#fff', borderRadius: '20px', padding: '25px', boxShadow: '0 10px 25px rgba(0,0,0,0.05)', border: '1px solid #efebe9' },
+    productSection: { display: 'flex', gap: '20px', marginBottom: '20px', borderBottom: '1px solid #f5f5f5', paddingBottom: '20px' },
+    img: { width: '90px', height: '90px', borderRadius: '15px', objectFit: 'cover', boxShadow: '0 4px 8px rgba(0,0,0,0.1)' },
+    prodTitle: { margin: 0, fontSize: '20px', color: '#3e2723', fontWeight: 'bold' },
+    prodDesc: { fontSize: '14px', color: '#757575', margin: '8px 0' },
+    store: { fontSize: '12px', color: '#6F4E37', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '5px' },
+    stars: { marginBottom: '12px', display: 'flex', gap: '3px' },
+    interactiveStars: { display: 'flex', gap: '8px', marginBottom: '15px' },
+    comment: { fontStyle: 'italic', color: '#5d4037', fontSize: '15px', lineHeight: '1.5' },
+    footerActions: { display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '20px' },
+    btnEdit: { padding: '10px 18px', border: '1px solid #6F4E37', background: 'none', color: '#6F4E37', borderRadius: '10px', cursor: 'pointer', fontWeight: '600', transition: '0.3s' },
+    btnDelete: { padding: '10px 18px', border: 'none', background: '#ffebee', color: '#c62828', borderRadius: '10px', cursor: 'pointer', fontWeight: '600' },
+    editArea: { display: 'flex', flexDirection: 'column', gap: '12px', background: '#fdfaf8', padding: '20px', borderRadius: '15px' },
+    label: { fontSize: '14px', fontWeight: 'bold', color: '#6F4E37' },
+    textarea: { padding: '15px', borderRadius: '12px', border: '1px solid #d7ccc8', minHeight: '100px', fontSize: '14px', outline: 'none', resize: 'vertical' },
+    actions: { display: 'flex', gap: '12px', marginTop: '5px' },
+    btnSave: { background: '#6F4E37', color: '#fff', border: 'none', padding: '12px 24px', borderRadius: '10px', cursor: 'pointer', fontWeight: 'bold', flex: 1 },
+    btnCancel: { background: '#bdbdbd', color: '#fff', border: 'none', padding: '12px 24px', borderRadius: '10px', cursor: 'pointer', fontWeight: 'bold' },
+    loading: { textAlign: 'center', padding: '100px', color: '#6F4E37', fontSize: '1.2rem' }
 };
 
 export default MisCalificaciones;

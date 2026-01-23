@@ -16,7 +16,10 @@ use App\Http\Controllers\SolicitudEmpresaController;
 use App\Http\Controllers\EmpresaActivacionController;
 use App\Http\Controllers\CalificacionController;
 
-/* --- RUTAS PÚBLICAS --- */
+/* --- RUTAS TOTALMENTE PÚBLICAS --- */
+// Ponemos destacados al principio para que Laravel no la confunda con /productos/{id}
+Route::get('/productos/destacados', [ProductoController::class, 'destacados']);
+
 Route::post('/register', [RegisteredUserController::class, 'store']);
 Route::post('/login', [AuthenticatedSessionController::class, 'store']);
 Route::post('/solicitud-empresa', [SolicitudEmpresaController::class, 'store']);
@@ -32,22 +35,21 @@ Route::get('/productos/{id}/calificaciones', [CalificacionController::class, 'po
 /* --- RUTAS PROTEGIDAS (SANCTUM) --- */
 Route::middleware('auth:sanctum')->group(function () {
 
-    // Perfil y Datos de Usuario
-    Route::get('/user', function (Request $request) { 
-        return $request->user()->load('empresa'); 
+    // Perfil de Usuario
+    Route::get('/user', function (Request $request) {
+        return $request->user()->load('empresa');
     });
 
-    // Cambiamos ProfileController por ClienteController para centralizar la edición del usuario
     Route::prefix('profile')->group(function () {
-        Route::patch('/', [ClienteController::class, 'updateProfile']); 
-        // Si necesitas borrar cuenta o ver perfil detallado, puedes añadir los métodos al ClienteController
+        Route::patch('/', [ClienteController::class, 'updateProfile']);
     });
 
     Route::post('/logout', [AuthenticatedSessionController::class, 'destroy']);
 
     /* --- ROL: ADMIN --- */
-    Route::prefix('admin')->group(function () {
-        Route::get('/solicitudes', [AdminController::class, 'dashboard']); 
+    // Cambia la línea por esta:
+Route::group(['prefix' => 'admin', 'middleware' => 'auth:sanctum'], function () {// Opcional: añadir middleware de rol
+        Route::get('/solicitudes', [AdminController::class, 'dashboard']);
         Route::post('/aprobar/{id}', [AdminController::class, 'aprobar']);
         Route::post('/rechazar/{id}', [AdminController::class, 'rechazar']);
         Route::post('/categorias', function (Request $request) {
@@ -59,14 +61,15 @@ Route::middleware('auth:sanctum')->group(function () {
     /* --- ROL: EMPRESA --- */
     Route::prefix('empresa')->group(function () {
         Route::get('/perfil', [EmpresaController::class, 'show']);
-        Route::post('/update', [EmpresaController::class, 'update']); 
-        
+        Route::post('/update', [EmpresaController::class, 'update']);
+
+        // Gestión de Productos (CRUD de la Empresa)
         Route::get('/productos', [ProductoController::class, 'index']);
-        Route::get('/productos/{producto}', [ProductoController::class, 'show']); 
+        Route::get('/productos/{producto}', [ProductoController::class, 'show']);
         Route::post('/productos', [ProductoController::class, 'store']);
-        Route::put('/productos/{producto}', [ProductoController::class, 'update']); 
+        Route::put('/productos/{producto}', [ProductoController::class, 'update']);
         Route::delete('/productos/{producto}', [ProductoController::class, 'destroy']);
-        
+
         Route::get('/pedidos', [PedidoController::class, 'indexEmpresa']);
         Route::patch('/pedidos/{pedido}/estado', [PedidoController::class, 'actualizarEstado']);
     });
@@ -76,19 +79,23 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/empresas', [ClienteController::class, 'indexEmpresas']);
         Route::get('/empresa/{id}', [ClienteController::class, 'showEmpresa']);
         Route::get('/empresa/{id}/productos', [ClienteController::class, 'productosPorEmpresa']);
-        
+
         Route::prefix('carrito')->group(function () {
             Route::get('/', [CarritoController::class, 'index']);
-            Route::post('/agregar/{productoId}', [CarritoController::class, 'agregar']); 
-            Route::put('/actualizar/{productoId}', [CarritoController::class, 'actualizar']); 
-            Route::delete('/eliminar/{productoId}', [CarritoController::class, 'eliminar']); 
-            Route::post('/vaciar', [CarritoController::class, 'vaciar']); 
+            Route::post('/agregar/{productoId}', [CarritoController::class, 'agregar']);
+            Route::put('/actualizar/{productoId}', [CarritoController::class, 'actualizar']);
+            Route::delete('/eliminar/{productoId}', [CarritoController::class, 'eliminar']);
+            Route::post('/vaciar', [CarritoController::class, 'vaciar']);
         });
 
         Route::post('/pedidos', [PedidoController::class, 'store']);
-        Route::post('/pedidos/{id}/cancelar', [PedidoController::class, 'cancelar']);
         Route::get('/mis-pedidos', [PedidoController::class, 'indexCliente']);
+        Route::post('/pedidos/{id}/cancelar', [PedidoController::class, 'cancelar']);
+        
+        // Calificaciones
         Route::post('/calificar', [ClienteController::class, 'calificar']);
         Route::get('/mis-calificaciones', [ClienteController::class, 'misCalificaciones']);
+        Route::delete('/calificaciones/{id}', [ClienteController::class, 'eliminarCalificacion']);
+        Route::patch('/calificaciones/{id}', [ClienteController::class, 'actualizarCalificacion']);
     });
 });
