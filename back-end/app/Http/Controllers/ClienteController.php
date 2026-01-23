@@ -163,4 +163,42 @@ class ClienteController extends Controller
         ], 500);
     }
 }
+// Eliminar una calificación
+public function eliminarCalificacion($id): JsonResponse
+{
+    $calificacion = Calificacion::where('id', $id)
+                                ->where('user_id', auth()->id())
+                                ->first();
+
+    if (!$calificacion) {
+        return response()->json(['message' => 'Reseña no encontrada'], 404);
+    }
+
+    $calificacion->delete();
+    return response()->json(['message' => 'Reseña eliminada correctamente']);
+}
+
+// Actualizar una calificación
+public function actualizarCalificacion(Request $request, $id): JsonResponse
+{
+    $request->validate([
+        'estrellas' => 'required|integer|min:1|max:5',
+        'comentario' => 'nullable|string'
+    ]);
+
+    $calificacion = Calificacion::where('id', $id)
+                                ->where('user_id', auth()->id())
+                                ->first();
+
+    if (!$calificacion) {
+        return response()->json(['message' => 'Reseña no encontrada'], 404);
+    }
+
+    $calificacion->update([
+        'estrellas' => $request->estrellas,
+        'comentario' => $request->comentario
+    ]);
+
+    return response()->json(['message' => 'Reseña actualizada correctamente']);
+}
 }

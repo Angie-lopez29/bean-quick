@@ -165,15 +165,31 @@ function App() {
     };
 
     const actualizarCantidad = async (productoId, nuevaCantidad) => {
-        if (nuevaCantidad < 1) return eliminarDelCarrito(productoId);
-        const token = localStorage.getItem('AUTH_TOKEN');
-        setCarrito(prev => prev.map(p => p.id === productoId ? { ...p, cantidad: nuevaCantidad } : p));
-        try {
-            await axios.put(`http://127.0.0.1:8000/api/cliente/carrito/actualizar/${productoId}`,
-                { cantidad: nuevaCantidad }, { headers: { Authorization: `Bearer ${token}` } }
-            );
-        } catch (error) { console.error("Error al actualizar", error); }
-    };
+    if (nuevaCantidad < 1) return eliminarDelCarrito(productoId);
+    
+    const token = localStorage.getItem('AUTH_TOKEN');
+
+    // ACTUALIZACIÓN OPTIMISTA: Actualizamos cantidad y pivot.cantidad
+    setCarrito(prev => prev.map(p => 
+        p.id === productoId 
+            ? { 
+                ...p, 
+                cantidad: nuevaCantidad, 
+                pivot: p.pivot ? { ...p.pivot, cantidad: nuevaCantidad } : { cantidad: nuevaCantidad }
+            } 
+            : p
+    ));
+
+    try {
+        await axios.put(`http://127.0.0.1:8000/api/cliente/carrito/actualizar/${productoId}`,
+            { cantidad: nuevaCantidad }, 
+            { headers: { Authorization: `Bearer ${token}` } }
+        );
+    } catch (error) { 
+        console.error("Error al actualizar", error);
+        // Opcional: Revertir el cambio si falla la API
+    }
+};
 
     const eliminarDelCarrito = async (productoId) => {
         const token = localStorage.getItem('AUTH_TOKEN');

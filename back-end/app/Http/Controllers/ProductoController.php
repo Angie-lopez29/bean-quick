@@ -12,7 +12,7 @@ use Illuminate\Http\JsonResponse;
 class ProductoController extends Controller
 {
     /**
-     * Obtener la empresa del usuario autenticado de forma segura.
+     * Obtener la empresa del usuario autenticado.
      */
     private function getEmpresaAutenticada()
     {
@@ -20,7 +20,7 @@ class ProductoController extends Controller
     }
 
     /**
-     * Listar productos de la empresa autenticada.
+     * Listar productos de la empresa autenticada (Panel Administrativo).
      */
     public function index(): JsonResponse
     {
@@ -38,7 +38,7 @@ class ProductoController extends Controller
     }
 
     /**
-     * MOSTRAR UN PRODUCTO (Este es el que te faltaba para que cargue el formulario)
+     * Mostrar un producto específico.
      */
     public function show($id): JsonResponse
     {
@@ -109,7 +109,6 @@ class ProductoController extends Controller
             'imagen' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:2048'
         ]);
 
-        // He añadido 'categoria_id' al fill para que también se actualice
         $producto->fill($request->only(['nombre', 'descripcion', 'precio', 'categoria_id']));
 
         if ($request->hasFile('imagen')) {
@@ -147,4 +146,50 @@ class ProductoController extends Controller
 
         return response()->json(['message' => 'Producto eliminado correctamente.']);
     }
+
+    /**
+     * Obtener productos destacados para el HOME.
+     * Esta ruta es PÚBLICA (No debe pedir Token en api.php)
+     */public function destacados(): JsonResponse
+{
+    try {
+        // 1. Cargamos productos con solo lo mínimo. 
+        // IMPORTANTE: Verifica si en tu tabla Empresa la columna es 'nombre' o 'nombre_empresa'
+        $productos = Producto::select('id', 'nombre', 'precio', 'imagen', 'empresa_id')
+            ->with(['empresa:id,nombre,logo', 'calificaciones:id,producto_id,estrellas'])
+            ->get();
+
+        $destacados = $productos->map(function ($producto) {
+            // 2. Cálculo del promedio de estrellas
+            $promedio = $producto->calificaciones->avg('estrellas');
+            $producto->calificaciones_avg_estrellas = $promedio ? round($promedio, 1) : 0;
+            
+            // 3. GENERAR URL DEL LOGO DE LA EMPRESA
+            // Esto permite que el logo se vea en React
+            if ($producto->empresa) {
+                $producto->empresa->logo_url = $producto->empresa->logo 
+                    ? asset('storage/' . $producto->empresa->logo) 
+                    : asset('images/default-logo.png'); // Imagen por defecto si no hay logo
+            }
+
+            // 4. Limpieza de datos pesados
+            unset($producto->calificaciones);
+            
+            return $producto;
+        })
+        // 5. Filtro, orden y cantidad
+        ->filter(fn($p) => $p->calificaciones_avg_estrellas > 0)
+        ->sortByDesc('calificaciones_avg_estrellas')
+        ->take(4) 
+        ->values();
+
+        return response()->json($destacados);
+
+    } catch (\Exception $e) {
+        return response()->json([
+            'error' => 'Error al procesar destacados',
+            'details' => $e->getMessage()
+        ], 500);
+    }
+}
 }

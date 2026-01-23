@@ -1,9 +1,9 @@
 <?php
 
 namespace App\Providers;
-
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
-
+use App\Models\User;
 class AppServiceProvider extends ServiceProvider
 {
     /**
@@ -19,6 +19,10 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        //
+        // Aquí defines qué significa tener "admin-access"
+    Gate::define('admin-access', function (User $user) {
+        // Retorna true solo si el rol es exactamente 'admin'
+        return $user->rol === 'admin';
+    });
     }
 }
