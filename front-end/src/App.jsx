@@ -8,25 +8,25 @@ import {
 } from 'react-icons/fa';
 
 // Importaciones de páginas (Tus imports actuales)
-import Register from './pages/Register';
-import Login from './pages/Login';
+import Register from './pages/auth/Register';
+import Login from './pages/auth/Login';
 import Home from './pages/Home';
-import RegistroEmpresa from './pages/RegistroEmpresa';
-import DashboardCliente from './pages/DashboardCliente';
-import DashboardEmpresa from './pages/DashboardEmpresa';
-import AgregarProducto from './pages/AgregarProducto';
-import MisProductos from './pages/MisProductos';
+import RegistroEmpresa from './pages/auth/RegistroEmpresa';
+import DashboardCliente from './pages/cliente/DashboardCliente';
+import DashboardEmpresa from './pages/empresa/DashboardEmpresa';
+import AgregarProducto from './pages/empresa/AgregarProducto';
+import MisProductos from './pages/empresa/MisProductos';
 import VistaTienda from './pages/VerTienda';
 import CarritoFlotante from './pages/CarritoFlotante';
-import ActivarCuenta from './pages/ActivarCuenta';
-import AdminDashboard from './pages/AdminDashboard';
-import AdminSolicitudes from './pages/AdminSolicitudes';
-import MisPedidos from './pages/MisPedidos';
-import GestionPedidosEmpresa from './pages/GestionPedidosEmpresa';
+import ActivarCuenta from './pages/auth/ActivarCuenta';
+import AdminDashboard from './pages/admin/AdminDashboard';
+import AdminSolicitudes from './pages/admin/AdminSolicitudes';
+import MisPedidos from './pages/cliente/MisPedidos';
+import GestionPedidosEmpresa from './pages/empresa/GestionPedidosEmpresa';
 
 // Nuevas páginas (Deberás crearlas a continuación)
-import MisCalificaciones from './pages/MisCalificaciones';
-import PerfilUsuario from './pages/PerfilUsuario';
+import MisCalificaciones from './pages/cliente/MisCalificaciones';
+import PerfilUsuario from './pages/cliente/PerfilUsuario';
 const Header = () => {
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const [isUserDropdownOpen, setIsUserDropdownOpen] = useState(false);

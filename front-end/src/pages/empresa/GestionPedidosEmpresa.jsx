@@ -51,7 +51,7 @@ const GestionPedidosEmpresa = () => {
                     } 
                 }
             );
-            
+            console.log(res)
             setPedidos(prev => prev.map(p => p.id === id ? { ...p, estado: nuevoEstado } : p));
         } catch (error) {
             console.error("Error detallado:", error.response?.data || error.message);
@@ -95,7 +95,6 @@ const GestionPedidosEmpresa = () => {
                 ) : (
                     pedidosFiltrados.map((pedido, index) => {
                         const esExpandido = expandido[pedido.id];
-
                         return (
                             <div key={pedido.id} style={styles.card}>
                                 <div style={styles.mainRow}>

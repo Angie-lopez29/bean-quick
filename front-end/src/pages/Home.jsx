@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { motion } from 'framer-motion';
 import { FaBolt, FaStar, FaLightbulb, FaArrowRight, FaStore } from 'react-icons/fa';
-
+console.log(motion)
 const Home = () => {
     const [destacados, setDestacados] = useState([]);
     const [loading, setLoading] = useState(true);
