@@ -36,10 +36,12 @@ class EmpresaDashboardController extends Controller
          * VENTAS HOY
          * ===================== */
         $ventasHoy = Pedido::where('empresa_id', $empresa->id)
-            ->whereIn('estado', $estadosExitosos)
-            ->whereDate('created_at', $hoy)
-            ->sum('total') ?? 0;
-
+        ->whereIn('estado', $estadosExitosos)
+        ->whereBetween('created_at', [
+            Carbon::today()->startOfDay(),
+            Carbon::today()->endOfDay()
+        ])
+        ->sum('total') ?? 0;
         /* =====================
          * CALIFICACIONES
          * ===================== */
