@@ -17,6 +17,9 @@ const DashboardEmpresa = () => {
     const [showFeedbackModal, setShowFeedbackModal] = useState(false);
     const [calificaciones, setCalificaciones] = useState([]);
     const [loadingFeedback, setLoadingFeedback] = useState(false);
+    const [isOpen, setIsOpen] = useState(true);
+    const [updatingStatus, setUpdatingStatus] = useState(false);
+
 
     useEffect(() => {
         const token = localStorage.getItem('AUTH_TOKEN');
@@ -28,6 +31,7 @@ const DashboardEmpresa = () => {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
                 setData(response.data);
+                setIsOpen(response.data.empresa.is_open);
             } catch (error) {
                 console.error("Error cargando datos:", error);
             } finally {
@@ -87,6 +91,31 @@ const DashboardEmpresa = () => {
         }
     };
 
+    // --- FUNCIÓN PARA TOGGLE ESTADO DE LA EMPRESA ---
+
+    const toggleEstadoEmpresa = async () => {
+    if (updatingStatus) return;
+
+    setUpdatingStatus(true);
+    const token = localStorage.getItem('AUTH_TOKEN');
+
+        try {
+            const response = await axios.post(
+                'http://127.0.0.1:8000/api/empresa/toggle-estado',
+                {},
+                { headers: { Authorization: `Bearer ${token}` } }
+            );
+    
+            setIsOpen(response.data.is_open);
+        } catch (error) {
+            alert('Error cambiando el estado de la tienda');
+            console.error(error);
+        } finally {
+            setUpdatingStatus(false);
+        }
+    };
+
+
 
     if (loading) return <div style={{ padding: '50px', textAlign: 'center' }}>Cargando panel...</div>;
 
@@ -99,6 +128,38 @@ const DashboardEmpresa = () => {
     return (
         <LayoutEmpresa empresa={data?.empresa}>
             {/* --- CONTENIDO PRINCIPAL --- */}
+
+            <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '15px',
+                marginBottom: '25px'
+            }}>
+                <span style={{
+                    fontWeight: 'bold',
+                    color: isOpen ? '#16a34a' : '#dc2626'
+                }}>
+                    {isOpen ? '🟢 Tienda Abierta' : '🔴 Tienda Cerrada'}
+                </span>
+            
+                <button
+                    onClick={toggleEstadoEmpresa}
+                    disabled={updatingStatus}
+                    style={{
+                        padding: '8px 16px',
+                        borderRadius: '999px',
+                        border: 'none',
+                        cursor: updatingStatus ? 'not-allowed' : 'pointer',
+                        background: isOpen ? '#dc2626' : '#16a34a',
+                        color: 'white',
+                        fontWeight: 'bold'
+                    }}
+                >
+                    {isOpen ? 'Cerrar tienda' : 'Abrir tienda'}
+                </button>
+                <h5>En caso de cerrar la tienda, los clientes no podrán realizar pedidos.</h5>
+            </div>
+
 
             <button
                 onClick={descargarReporte}

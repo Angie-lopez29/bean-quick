@@ -62,7 +62,7 @@ const VistaTienda = ({ agregarAlCarrito, carrito = [] }) => {
                     <div style={styles.headerContent}>
                         <img src={`http://127.0.0.1:8000/storage/${empresa.logo}`} style={styles.shopLogo} alt={empresa.nombre} />
                         <div style={styles.headerTexts}>
-                            <h1 style={styles.empresaNombre}>{empresa.nombre}</h1>
+                            <h1 style={styles.empresaNombre}>{empresa.nombre} - {empresa.direccion}</h1>
                             <p style={styles.empresaSlogan}>Sede Oficial - Menú Digital</p>
                         </div>
                     </div>
@@ -78,6 +78,21 @@ const VistaTienda = ({ agregarAlCarrito, carrito = [] }) => {
                     </select>
                 </div>
 
+                {empresa && !empresa.is_open && (
+                    <div style={{
+                        background: '#fee2e2',
+                        color: '#991b1b',
+                        padding: '15px 20px',
+                        borderRadius: '12px',
+                        marginBottom: '20px',
+                        fontWeight: '600',
+                        textAlign: 'center',
+                        border: '1px solid #fecaca'
+                    }}>
+                        Esta tienda está cerrada en este momento. Puedes ver el menú, pero no realizar pedidos.
+                    </div>
+                )}
+
                 <div style={styles.grid}>
                     {productosFiltrados.map(prod => {
                         // Buscamos si el producto ya está en el carrito para calcular stock real
@@ -87,6 +102,8 @@ const VistaTienda = ({ agregarAlCarrito, carrito = [] }) => {
                         const stockRestante = prod.stock - cantEnCarrito;
                         const tieneStock = prod.stock > 0;
                         const puedeSumarMas = stockRestante > 0;
+                        const tiendaAbierta = empresa?.is_open;
+
 
                         return (
                             <div key={prod.id} style={{ ...styles.card, opacity: tieneStock ? 1 : 0.9 }}>
@@ -116,14 +133,30 @@ const VistaTienda = ({ agregarAlCarrito, carrito = [] }) => {
                                         <button 
                                             style={{
                                                 ...styles.addBtn,
-                                                backgroundColor: !tieneStock ? '#dc2626' : (!puedeSumarMas ? '#ccc' : '#1a1a1a'),
-                                                cursor: (tieneStock && puedeSumarMas) ? 'pointer' : 'not-allowed'
+                                                backgroundColor: !tiendaAbierta
+                                                    ? '#9ca3af'
+                                                    : !tieneStock
+                                                        ? '#dc2626'
+                                                        : (!puedeSumarMas ? '#ccc' : '#1a1a1a'),
+                                                cursor: (tiendaAbierta && tieneStock && puedeSumarMas)
+                                                    ? 'pointer'
+                                                    : 'not-allowed'
                                             }} 
-                                            onClick={() => tieneStock && puedeSumarMas && agregarAlCarrito(prod)}
-                                            disabled={!tieneStock || !puedeSumarMas}
+                                            onClick={() =>
+                                                tiendaAbierta &&
+                                                tieneStock &&
+                                                puedeSumarMas &&
+                                                agregarAlCarrito(prod)
+                                            }
+                                            disabled={!tiendaAbierta || !tieneStock || !puedeSumarMas}
                                         >
-                                            {!tieneStock ? 'Agotado' : (!puedeSumarMas ? 'En Carrito' : 'Agregar')}
+                                            {!tiendaAbierta
+                                                ? 'Cerrado'
+                                                : !tieneStock
+                                                    ? 'Agotado'
+                                                    : (!puedeSumarMas ? 'En Carrito' : 'Agregar')}
                                         </button>
+
                                     </div>
                                 </div>
                             </div>

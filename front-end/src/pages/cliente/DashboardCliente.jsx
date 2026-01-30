@@ -78,6 +78,22 @@ const DashboardCliente = () => {
                                 onClick={() => navigate(`/tienda/${empresa.id}`)}
                             >
                                 <div style={styles.imageContainer}>
+                                    {!empresa.is_open && (
+                                      <div style={{
+                                        position: 'absolute',
+                                        inset: 0,
+                                        background: 'rgba(0,0,0,0.35)',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        color: 'white',
+                                        fontWeight: 'bold',
+                                        fontSize: '18px'
+                                      }}>
+                                        Cerrada
+                                      </div>
+                                    )}
+
                                     <img
                                         src={empresa.logo ? `http://127.0.0.1:8000/storage/${empresa.logo}` : 'https://images.unsplash.com/photo-1509042239860-f550ce710b93?q=80&w=800&auto=format&fit=crop'}
                                         alt={empresa.nombre}
@@ -94,7 +110,16 @@ const DashboardCliente = () => {
                                     <p style={styles.cardDesc}>{empresa.descripcion || 'Una experiencia única en cada taza.'}</p>
                                     
                                     <div style={styles.cardFooter}>
-                                        <span style={styles.location}><FaMapMarkerAlt /> Abierto ahora</span>
+                                        <span
+                                          style={{
+                                            ...styles.location,
+                                            color: empresa.is_open ? '#10b981' : '#ef4444'
+                                          }}
+                                        >
+                                          <FaMapMarkerAlt />
+                                          {empresa.is_open ? ' Abierta ahora' : ' Cerrada'}
+                                        </span>
+
                                         <button 
                                             style={{
                                                 ...styles.cardBtn,
