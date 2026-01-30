@@ -56,6 +56,38 @@ const DashboardEmpresa = () => {
         }
     };
 
+    // --- FUNCIÓN PARA DESCARGAR REPORTE PDF ---
+
+    const descargarReporte = async () => {
+    const token = localStorage.getItem('AUTH_TOKEN');
+
+        try {
+            const response = await axios.get(
+                'http://127.0.0.1:8000/api/empresa/dashboard/pdf',
+                {
+                    headers: {
+                        Authorization: `Bearer ${token}`,
+                    },
+                    responseType: 'blob',
+                }
+            );
+    
+            const file = new Blob([response.data], { type: 'application/pdf' });
+            const url = window.URL.createObjectURL(file);
+    
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'reporte-dashboard.pdf';
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+        } catch (error) {
+            alert('Error descargando el PDF');
+            console.error(error);
+        }
+    };
+
+
     if (loading) return <div style={{ padding: '50px', textAlign: 'center' }}>Cargando panel...</div>;
 
     const stats = data?.stats_cards || {};
@@ -66,6 +98,23 @@ const DashboardEmpresa = () => {
     return (
         <LayoutEmpresa empresa={data?.empresa}>
             {/* --- CONTENIDO PRINCIPAL --- */}
+
+            <button
+                onClick={descargarReporte}
+                style={{
+                    background: '#1e293b',
+                    color: 'white',
+                    padding: '12px 20px',
+                    borderRadius: '10px',
+                    border: 'none',
+                    fontWeight: 'bold',
+                    cursor: 'pointer',
+                    marginBottom: '20px'
+                }}
+            >
+                📄 Descargar Reporte Pdf
+            </button>
+
             <section style={styles.sectionRow}>
                 <div style={styles.cardKpi}>
                     <div style={styles.kpiIcon}><FaMoneyBillWave color="#2ecc71" /></div>
