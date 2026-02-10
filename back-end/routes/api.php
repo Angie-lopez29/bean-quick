@@ -77,11 +77,25 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/solicitudes', [AdminController::class, 'dashboard']);
         Route::post('/aprobar/{id}', [AdminController::class, 'aprobar']);
         Route::post('/rechazar/{id}', [AdminController::class, 'rechazar']);
-        Route::post('/categorias', function (Request $request) {
-            $data = $request->validate(['nombre' => 'required|unique:categorias']);
-            return App\Models\Categoria::create($data);
-            });
-            });
+        Route::post('/categorias', [AdminController::class, 'crearCategoria']);
+        Route::delete('/categorias/{id}', [AdminController::class, 'eliminarCategoria']);
+        Route::get('/solicitudes', [AdminController::class, 'dashboard']); // Dashboard global
+        Route::post('/aprobar/{id}', [AdminController::class, 'aprobar']);
+        Route::post('/rechazar/{id}', [AdminController::class, 'rechazar']);
+        Route::post('/categorias', [AdminController::class, 'crearCategoria']);
+        Route::delete('/categorias/{id}', [AdminController::class, 'eliminarCategoria']);
+        // Ver detalle de un usuario (para cargar el formulario de edición)
+        Route::get('/usuarios/{id}', [AdminController::class, 'verUsuario']); 
+        
+        // Guardar cambios del usuario (Nombre, Correo, Password, Rol)
+        Route::put('/usuarios/{id}', [AdminController::class, 'editarUsuario']); 
+        
+        // Eliminar usuario permanentemente
+        Route::delete('/usuarios/{id}', [AdminController::class, 'eliminarUsuario']);
+        Route::get('/empresas', [AdminController::class, 'listarEmpresas']);
+        Route::delete('/empresas/{id}', [AdminController::class, 'eliminarEmpresa']);
+        Route::put('/empresas/{id}', [AdminController::class, 'editarEmpresa']);
+    });
             
             /**
      * --- ROL: EMPRESA ---

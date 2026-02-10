@@ -17,6 +17,7 @@ import DashboardCliente from './pages/cliente/DashboardCliente';
 import DashboardEmpresa from './pages/empresa/DashboardEmpresa';
 import AgregarProducto from './pages/empresa/AgregarProducto';
 import MisProductos from './pages/empresa/MisProductos';
+import GestionUsuarios from './pages/admin/GestionUsuarios';
 import VistaTienda from './pages/VerTienda';
 import CarritoFlotante from './pages/components/CarritoFlotante';
 import ActivarCuenta from './pages/auth/ActivarCuenta';
@@ -28,6 +29,7 @@ import Footer from './pages/components/common/Footer';
 // Nuevas páginas (Deberás crearlas a continuación)
 import MisCalificaciones from './pages/cliente/MisCalificaciones';
 import PerfilUsuario from './pages/cliente/PerfilUsuario';
+import GestionEmpresas from './pages/admin/GestionEmpresas';
 const Header = () => {
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const [isUserDropdownOpen, setIsUserDropdownOpen] = useState(false);
@@ -272,7 +274,8 @@ const AppLayout = ({ carrito, setCarrito, agregarAlCarrito, confirmarPedido, act
                         <Route path="/empresa/productos/editar/:id" element={<AgregarProducto />} />
                         <Route path="/empresa/productos" element={<MisProductos />} />
                         <Route path="/empresa/pedidos" element={<GestionPedidosEmpresa />} />
-
+                        <Route path="/admin/usuarios" element={<GestionUsuarios />} />
+                        <Route path="/admin/empresas" element={<GestionEmpresas />} />
                         {/* RUTAS ADMIN */}
                         <Route path="/admin/dashboard" element={userRole === 'admin' ? <AdminDashboard /> : <Navigate to="/login" />} />
                         <Route path="/admin/solicitudes" element={userRole === 'admin' ? <AdminSolicitudes /> : <Navigate to="/login" />} />

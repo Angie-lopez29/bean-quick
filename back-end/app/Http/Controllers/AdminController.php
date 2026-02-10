@@ -6,10 +6,12 @@ use App\Models\User;
 use App\Models\Empresa;
 use App\Models\Pedido;
 use App\Models\SolicitudEmpresa;
+use App\Models\Categoria;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Mail;
 use App\Mail\ActivacionEmpresaMail;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 
 class AdminController extends Controller
 {
@@ -21,8 +23,9 @@ class AdminController extends Controller
     public function dashboard(): JsonResponse
     {
         return response()->json([
-            // Envía la lista de todos los usuarios registrados
-            'usuarios'    => User::all(),
+            // Envía la lista de todos los usuarios registrados que no sean empresa
+
+            'usuarios'    => User::where('rol', '!=', 'empresa')->get(),
             // Envía la lista de todas las empresas existentes
             'empresas'    => Empresa::all(),
             // Trae los pedidos junto con la información del cliente y la empresa
@@ -85,4 +88,171 @@ class AdminController extends Controller
             'solicitud' => $solicitud
         ]);
     }
+
+    /**
+     * FUNCIÓN CREAR CATEGORÍA:
+     * Crea una nueva categoría validando que el nombre sea único.
+     */
+    public function crearCategoria(Request $request): JsonResponse
+    {
+        // Valida que el nombre sea requerido y único en la tabla de categorías
+        $validated = $request->validate([
+            'nombre' => 'required|string|unique:categorias,nombre'
+        ]);
+
+        try {
+            $categoria = Categoria::create($validated);
+
+            return response()->json([
+                'message'  => 'Categoría creada correctamente.',
+                'categoria' => $categoria
+            ], 201);
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Error al crear la categoría.',
+                'error'   => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * FUNCIÓN ELIMINAR CATEGORÍA:
+     * Elimina una categoría existente.
+     */
+    public function eliminarCategoria($id): JsonResponse
+    {
+        try {
+            $categoria = Categoria::findOrFail($id);
+            $categoria->delete();
+
+            return response()->json([
+                'message' => 'Categoría eliminada correctamente.'
+            ], 200);
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            return response()->json([
+                'message' => 'Categoría no encontrada.'
+            ], 404);
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Error al eliminar la categoría.',
+                'error'   => $e->getMessage()
+            ], 500);
+        }
+    }
+        public function verUsuario($id): JsonResponse
+    {
+        $usuario = User::findOrFail($id);
+        return response()->json($usuario);
+    }
+
+    /**
+     * EDITAR / ACTUALIZAR USUARIO
+     */
+    public function editarUsuario(Request $request, $id): JsonResponse
+    {
+        $usuario = User::findOrFail($id);
+
+        // Validación: el email debe ser único pero ignorando al usuario actual
+        $validated = $request->validate([
+            'name'     => 'required|string|max:255',
+            'email'    => 'required|email|unique:users,email,' . $id,
+            'rol'      => 'required|in:admin,cliente',
+            'password' => 'nullable|string|min:6', // Password opcional
+        ]);
+
+        // Actualizamos datos básicos
+        $usuario->name = $validated['name'];
+        $usuario->email = $validated['email'];
+        $usuario->rol = $validated['rol'];
+
+        // Solo ciframos y cambiamos la contraseña si se envió una nueva
+        if (!empty($validated['password'])) {
+            $usuario->password = bcrypt($validated['password']);
+        }
+
+        $usuario->save();
+
+        return response()->json([
+            'message' => 'Usuario actualizado correctamente.',
+            'usuario' => $usuario
+        ]);
+    }
+
+    /**
+     * ELIMINAR USUARIO
+     */
+    public function eliminarUsuario($id): JsonResponse
+    {
+        try {
+            $usuario = User::findOrFail($id);
+
+            // Seguridad: El admin no debería poder eliminarse a sí mismo por error
+            if (auth()->id() == $id) {
+                return response()->json(['message' => 'No puedes eliminar tu propia cuenta de administrador.'], 403);
+            }
+
+            $usuario->delete();
+
+            return response()->json([
+                'message' => 'Usuario eliminado correctamente.'
+            ], 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Error al eliminar el usuario.',
+                'error'   => $e->getMessage()
+            ], 500);
+        }
+    }
+    /**
+ * OBTENER TODAS LAS EMPRESAS
+ */
+public function listarEmpresas(): JsonResponse
+{
+    try {
+        // Al traer las empresas, Laravel automáticamente agregará logo_url y foto_local_url
+        // gracias al array $appends que tienes en tu modelo.
+        $empresas = Empresa::with('usuario')->get();
+        return response()->json($empresas);
+    } catch (\Exception $e) {
+        return response()->json(['error' => $e->getMessage()], 500);
+    }
+}
+
+/****/public function editarEmpresa(Request $request, $id): JsonResponse
+{
+    $empresa = Empresa::findOrFail($id);
+
+    $request->validate([
+        'nombre'    => 'required|string|max:255',
+        'nit'       => 'required|string|unique:empresas,nit,' . $id,
+        'telefono'  => 'required|string',
+        'direccion' => 'required|string',
+    ]);
+
+    $empresa->update($request->all());
+
+    // Cargamos la relación de usuario para que React no pierda el email al actualizar
+    return response()->json([
+        'message' => 'Empresa actualizada con éxito',
+        'empresa' => $empresa->load('usuario') 
+    ]);
+}
+
+/**
+ * ELIMINAR EMPRESA
+ */
+public function eliminarEmpresa($id): \Illuminate\Http\JsonResponse
+{
+    try {
+        $empresa = Empresa::findOrFail($id);
+        
+        // Al eliminar la empresa, Laravel se encargará de los productos 
+        // si tienes configurado el "onDelete('cascade')" en tus migraciones.
+        $empresa->delete();
+
+        return response()->json(['message' => 'Empresa eliminada correctamente.']);
+    } catch (\Exception $e) {
+        return response()->json(['message' => 'Error al eliminar empresa.'], 500);
+    }
+}
 }
