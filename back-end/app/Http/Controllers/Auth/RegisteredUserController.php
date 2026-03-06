@@ -24,7 +24,7 @@ class RegisteredUserController extends Controller
     public function store(Request $request): JsonResponse
     {
         // 1. LA LIMPIEZA (Sanitización):
-        // Antes de leer el nombre, usamos "strip_tags". 
+        // Antes de leer el nombre, usamos "strip_tags".
         // Es como si alguien intentara entrar con una máscara: se la quitamos para ver su cara real.
         // Esto evita que metan código malicioso (HTML/JS) en el campo del nombre.
         $request->merge([
@@ -35,16 +35,16 @@ class RegisteredUserController extends Controller
         // Ponemos reglas muy estrictas para dejar pasar a alguien:
         // - El nombre no puede tener símbolos extraños de programación.
         // - El correo debe ser único (no pueden haber dos personas con el mismo correo).
-        // - La CONTRASEÑA debe ser una "Fortaleza": 
-        //   mínimo 8 letras, mezclar mayúsculas con minúsculas, incluir números 
+        // - La CONTRASEÑA debe ser una "Fortaleza":
+        //   mínimo 8 letras, mezclar mayúsculas con minúsculas, incluir números
         //   y que no sea una clave común filtrada en internet (como "123456").
         $request->validate([
             'name' => ['required', 'string', 'max:255', 'regex:/^[^<>{}\/]*$/'],
             'email' => ['required', 'string', 'email', 'max:255', 'unique:'.User::class],
             'password' => [
-                'required', 
-                'confirmed', 
-                Password::min(8)->mixedCase()->numbers()->uncompromised()
+                'required',
+                'confirmed',
+                Password::min(8)->mixedCase()->numbers()
             ],
             'rol' => ['required', 'in:empresa,cliente,admin'],
         ]);
@@ -72,9 +72,9 @@ class RegisteredUserController extends Controller
         $token = $user->createToken('auth_token')->plainTextToken;
 
         // 6. EL MAPA:
-        // Decidimos a dónde mandarlo según quién sea. 
+        // Decidimos a dónde mandarlo según quién sea.
         // Si es empresa, va a su panel; si es admin, a su oficina; si es cliente, a la tienda.
-        $redirectTo = '/'; 
+        $redirectTo = '/';
         if ($user->rol === 'empresa') {
             $redirectTo = '/empresa/panel';
         } elseif ($user->rol === 'admin') {

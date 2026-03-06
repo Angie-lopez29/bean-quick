@@ -23,7 +23,7 @@ class CarritoController extends Controller
             ->map(function ($producto) {
                 $producto->precio = (float) $producto->precio;
                 // Nos aseguramos que el stock sea un entero para las validaciones en React
-                $producto->stock = (int) $producto->stock; 
+                $producto->stock = (int) $producto->stock;
                 return $producto;
             });
 
@@ -33,36 +33,36 @@ class CarritoController extends Controller
     public function agregar(Request $request, $productoId): JsonResponse
     {
         $request->validate(['cantidad' => 'required|integer|min:1']);
-    
+
         //  cargamos la empresa junto al producto
         $producto = Producto::with('empresa')->findOrFail($productoId);
-    
+
         //  BLOQUEO: empresa cerrada
         if (!$producto->empresa->is_open) {
             return response()->json([
                 'error' => 'Esta tienda está cerrada actualmente.'
             ], 403);
         }
-    
+
         $user = Auth::user();
         $carrito = Carrito::firstOrCreate(['user_id' => $user->id]);
-        
+
         $carritoProducto = $carrito->productos()->where('producto_id', $productoId)->first();
         $cantidadActual = $carritoProducto ? $carritoProducto->pivot->cantidad : 0;
         $nuevaCantidad = $cantidadActual + $request->cantidad;
-    
+
         if ($producto->stock < $nuevaCantidad) {
             return response()->json([
                 'error' => "Lo sentimos, solo quedan {$producto->stock} unidades disponibles."
             ], 422);
         }
-    
+
         if ($carritoProducto) {
             $carrito->productos()->updateExistingPivot($productoId, ['cantidad' => $nuevaCantidad]);
         } else {
             $carrito->productos()->attach($productoId, ['cantidad' => $request->cantidad]);
         }
-    
+
         return response()->json([
             'message' => 'Producto agregado.',
             'productos' => $this->obtenerProductosCarrito($carrito)
@@ -73,26 +73,26 @@ class CarritoController extends Controller
     public function actualizar(Request $request, $productoId): JsonResponse
     {
         $request->validate(['cantidad' => 'required|integer|min:1']);
-    
+
         // cargamos empresa
         $producto = Producto::with('empresa')->findOrFail($productoId);
-    
+
         // BLOQUEO: empresa cerrada
         if (!$producto->empresa->is_open) {
             return response()->json([
                 'error' => 'No puedes modificar productos de una tienda cerrada.'
             ], 403);
         }
-    
+
         if ($producto->stock < $request->cantidad) {
             return response()->json(['error' => "Stock insuficiente."], 422);
         }
-    
+
         $carrito = Carrito::where('user_id', Auth::id())->first();
         if ($carrito) {
             $carrito->productos()->updateExistingPivot($productoId, ['cantidad' => $request->cantidad]);
         }
-    
+
         return response()->json([
             'message' => 'Cantidad actualizada.',
             'productos' => $this->obtenerProductosCarrito($carrito)
