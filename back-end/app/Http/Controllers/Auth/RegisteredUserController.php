@@ -3,12 +3,14 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
+use App\Mail\BienvenidaMail;
 use App\Models\User;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Validation\Rules\Password;
 
 /**
@@ -65,7 +67,11 @@ class RegisteredUserController extends Controller
         // Esto puede disparar otras acciones, como enviar el correo de bienvenida.
         event(new Registered($user));
 
-        // 5. LA ENTREGA DE LA LLAVE (Token):
+        // 5. CORREO DE BIENVENIDA:
+        // Le enviamos un correo al nuevo usuario para darle la bienvenida a BeanQuick.
+        Mail::to($user->email)->send(new BienvenidaMail($user));
+
+        // 6. LA ENTREGA DE LA LLAVE (Token):
         // Logueamos al usuario automáticamente y le damos su "Token".
         // Ese token es su pase VIP para que React sepa quién es en cada movimiento.
         Auth::login($user);
@@ -81,7 +87,7 @@ class RegisteredUserController extends Controller
             $redirectTo = '/admin/dashboard';
         }
 
-        // 7. RESPUESTA FINAL:
+        // 8. RESPUESTA FINAL:
         // Le enviamos a React todo el "kit de bienvenida" en un paquete JSON limpio.
         return response()->json([
             'status' => 'success',

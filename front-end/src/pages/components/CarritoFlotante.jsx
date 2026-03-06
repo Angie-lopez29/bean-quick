@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
 import { FaShoppingBag, FaTimes, FaMinus, FaPlus, FaClock, FaChevronDown, FaChevronUp, FaStore, FaTrash, FaExclamationTriangle, FaCheckCircle } from 'react-icons/fa';
 
-const CarritoFlotante = ({ carrito, setCarrito, actualizarCantidad, confirmarPedido, eliminarDelCarrito }) => {
-    const [isOpen, setIsOpen] = useState(false);
+const CarritoFlotante = ({ carrito, setCarrito, actualizarCantidad, confirmarPedido, eliminarDelCarrito, isOpen, setIsOpen}) => {
     console.log(setCarrito)
     const [seccionesAbiertas, setSeccionesAbiertas] = useState({});
     const [horasPorEmpresa, setHorasPorEmpresa] = useState({});
@@ -101,7 +100,6 @@ const CarritoFlotante = ({ carrito, setCarrito, actualizarCantidad, confirmarPed
                     return nuevas;
                 });
                 cerrarModal();
-                // Si el carrito queda vacío tras confirmar la última tienda, cerramos el sidebar
                 if (carrito.length <= productos.length) setIsOpen(false);
             }
         } catch (error) {
@@ -347,6 +345,9 @@ const CarritoFlotante = ({ carrito, setCarrito, actualizarCantidad, confirmarPed
                                 Confirmar Pedido
                             </button>
                         </div>
+                        <span style={styles.modalFooterDisclaimer}>
+                            Al confirmar, serás redirigido a Mercado Pago para completar tu compra.
+                        </span>
                     </div>
                 </div>
             )}
@@ -530,6 +531,14 @@ const styles = {
         cursor: 'pointer',
         fontSize: '14px',
         transition: 'background 0.3s'
+    },
+
+    modalFooterDisclaimer: {
+        marginTop: '5px',
+        marginBottom: '10px',
+        fontSize: '12px',
+        color: '#666',
+        textAlign: 'center'
     }
 };
 

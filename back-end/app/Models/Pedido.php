@@ -12,7 +12,8 @@ class Pedido extends Model
     protected $fillable = [
         'user_id',      // Usamos user_id para ser consistentes
         'empresa_id',
-        'estado',       // 'pendiente', 'preparando', 'listo', 'entregado'
+        'estado',       // 'pendiente', 'pagado', 'preparando', 'listo', 'entregado', 'cancelado'
+        'estado_pago',     // 'pendiente', 'aprobado', 'rechazado'
         'hora_recogida',
         'total'
     ];

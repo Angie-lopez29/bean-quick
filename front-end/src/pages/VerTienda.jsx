@@ -4,7 +4,7 @@ import axios from 'axios';
 import { FaStar, FaStarHalfAlt, FaRegStar } from 'react-icons/fa';
 
 // Agregamos = [] para que si no llega el carrito, el código no rompa
-const VistaTienda = ({ agregarAlCarrito, carrito = [] }) => {
+const VistaTienda = ({ agregarAlCarrito, carrito = [], abrirCarrito }) => {
     const { id } = useParams();
     const [empresa, setEmpresa] = useState(null);
     const [productos, setProductos] = useState([]);
@@ -142,12 +142,12 @@ const VistaTienda = ({ agregarAlCarrito, carrito = [] }) => {
                                                     ? 'pointer'
                                                     : 'not-allowed'
                                             }} 
-                                            onClick={() =>
-                                                tiendaAbierta &&
-                                                tieneStock &&
-                                                puedeSumarMas &&
-                                                agregarAlCarrito(prod)
-                                            }
+                                            onClick={() => {
+                                                if (tiendaAbierta && tieneStock && puedeSumarMas) {
+                                                    agregarAlCarrito(prod);
+                                                    abrirCarrito();       // ← NUEVO
+                                                }
+                                            }}
                                             disabled={!tiendaAbierta || !tieneStock || !puedeSumarMas}
                                         >
                                             {!tiendaAbierta

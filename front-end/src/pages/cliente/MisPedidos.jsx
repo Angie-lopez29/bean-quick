@@ -6,6 +6,22 @@ import {
 } from 'react-icons/fa';
 
 const MisPedidos = () => {
+        // --- FUNCIÓN PARA PAGAR PEDIDO ---
+        const pagarPedido = async (pedido) => {
+            const token = localStorage.getItem('AUTH_TOKEN');
+            try {
+                // Llamar a la API para generar preferencia de pago
+                const pagoRes = await axios.post(
+                    `http://127.0.0.1:8000/api/cliente/pedidos/${pedido.id}/pagar`,
+                    {},
+                    { headers: { Authorization: `Bearer ${token}` } }
+                );
+                // Redirigir a Mercado Pago
+                window.location.href = pagoRes.data.init_point;
+            } catch (error) {
+                alert(error.response?.data?.message || "Error al iniciar el pago");
+            }
+        };
     const [pedidos, setPedidos] = useState([]);
     const [abierto, setAbierto] = useState(null);
     const [filtro, setFiltro] = useState('todos');
@@ -98,9 +114,10 @@ const MisPedidos = () => {
         }
     };
 
-    const pedidosFiltrados = filtro === 'todos' 
-        ? pedidos 
-        : pedidos.filter(p => p.estado.toLowerCase() === filtro.toLowerCase());
+    const estadosPermitidos = ['pendiente', 'pagado', 'preparando', 'listo', 'entregado', 'cancelado'];
+    const pedidosFiltrados = filtro === 'todos'
+        ? pedidos.filter(p => estadosPermitidos.includes(p.pedido_estado_final.toLowerCase()))
+        : pedidos.filter(p => p.pedido_estado_final.toLowerCase() === filtro);
 
     const togglePedido = (id) => {
         setAbierto(abierto === id ? null : id);
@@ -108,7 +125,7 @@ const MisPedidos = () => {
 
     const getStatusStyle = (status) => {
         switch (status.toLowerCase()) {
-            case 'pendiente': return { color: '#f39c12', background: '#fdf5e6' };
+            case 'pagado': return { color: '#9dbe0a', background: '#e8f8f5' };
             case 'preparando': return { color: '#3498db', background: '#ebf5fb' };
             case 'listo': return { color: '#27ae60', background: '#eafaf1' };
             case 'entregado': return { color: '#6f4e37', background: '#f5f5f5' };
@@ -122,7 +139,7 @@ const MisPedidos = () => {
             <h2 style={styles.title}><FaCoffee /> Mis Pedidos</h2>
 
             <div style={styles.filterMenu}>
-                {['todos', 'pendiente', 'preparando', 'listo', 'entregado', 'cancelado'].map((estado) => (
+                {['todos', 'pendiente', 'pagado', 'preparando', 'listo', 'entregado', 'cancelado'].map((estado) => (
                     <button key={estado} onClick={() => setFiltro(estado)} 
                         style={{...styles.filterBtn, ...(filtro === estado ? styles.filterBtnActive : {})}}>
                         {estado.charAt(0).toUpperCase() + estado.slice(1)}
@@ -131,7 +148,11 @@ const MisPedidos = () => {
             </div>
             
             <div style={styles.list}>
-                {pedidosFiltrados.map((pedido) => (
+                            {pedidosFiltrados.map((pedido) => {
+                const badgeText = pedido.pedido_estado_final.charAt(0).toUpperCase() + pedido.pedido_estado_final.slice(1);
+                const badgeStatus = pedido.pedido_estado_final;
+                
+                return (
                     <div key={pedido.id} style={styles.card}>
                         <div style={styles.cardHeader} onClick={() => togglePedido(pedido.id)}>
                             <div style={styles.headerMain}>
@@ -142,29 +163,38 @@ const MisPedidos = () => {
                                         <span style={styles.orderId}>Pedido #{pedido.id}</span>
                                     </div>
                                 </div>
-                                <span style={{...styles.statusBadge, ...getStatusStyle(pedido.estado)}}>
-                                    {pedido.estado}
+                                
+                                {/* --- BADGE --- */}
+                                <span style={{ ...styles.statusBadge, ...getStatusStyle(badgeStatus) }}>
+                                    {badgeText}
                                 </span>
                             </div>
+            
                             <div style={styles.headerSub}>
                                 <span><FaClock /> {pedido.hora_recogida}</span>
                                 <span>${parseFloat(pedido.total).toLocaleString()}</span>
                                 {abierto === pedido.id ? <FaChevronUp /> : <FaChevronDown />}
                             </div>
                         </div>
-
+            
+                        {/* Detalles del pedido */}
                         {abierto === pedido.id && (
                             <div style={styles.details}>
                                 <p style={styles.detailInfo}>
                                     <FaMapMarkerAlt style={{color: '#6f4e37'}} /> <strong>Dirección:</strong> {pedido.empresa?.direccion}
                                 </p>
-                                
+            
                                 {pedido.estado.toLowerCase() === 'pendiente' && (
-                                    <button onClick={() => cancelarPedido(pedido.id)} style={styles.cancelBtn}>
-                                        <FaTimesCircle /> Cancelar Pedido
-                                    </button>
+                                    <div style={{display: 'flex', gap: '10px'}}>
+                                        <button onClick={() => cancelarPedido(pedido.id)} style={styles.cancelBtn}>
+                                            <FaTimesCircle /> Cancelar Pedido
+                                        </button>
+                                        <button onClick={() => pagarPedido(pedido)} style={styles.payBtn}>
+                                            Pagar Pedido
+                                        </button>
+                                    </div>
                                 )}
-
+            
                                 <hr style={styles.divider} />
                                 <div style={styles.prodList}>
                                     {pedido.productos.map((prod) => (
@@ -176,8 +206,7 @@ const MisPedidos = () => {
                                                     <span style={styles.prodQty}>Cant: {prod.pivot.cantidad}</span>
                                                 </div>
                                             </div>
-                                            
-                                            {/* CAMBIO: Lógica del botón de calificar */}
+            
                                             {pedido.estado.toLowerCase() === 'entregado' && (
                                                 prod.ya_calificado ? (
                                                     <div style={styles.alreadyRated}>
@@ -195,7 +224,8 @@ const MisPedidos = () => {
                             </div>
                         )}
                     </div>
-                ))}
+                );
+            })}
             </div>
 
             {/* --- MODAL DE CALIFICACIÓN --- */}
@@ -258,7 +288,8 @@ const styles = {
     headerSub: { display: 'flex', justifyContent: 'space-between', color: '#666', fontSize: '14px', alignItems: 'center' },
     details: { padding: '15px', background: '#f9f9f9', borderTop: '1px solid #eee' },
     detailInfo: { fontSize: '13px', color: '#555', marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '5px' },
-    cancelBtn: { width: '100%', padding: '10px', background: '#f9ebea', color: '#e74c3c', border: '1px solid #e74c3c', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', marginTop: '10px' },
+    cancelBtn: { flex: 1, padding: '10px', background: '#f9ebea', color: '#e74c3c', border: '1px solid #e74c3c', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', marginTop: '10px' },
+    payBtn: { flex: 1, padding: '10px', background: '#6f4e37', color: 'white', border: '1px solid #6f4e37', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', marginTop: '10px' },
     divider: { border: '0', borderTop: '1px solid #eee', margin: '15px 0' },
     prodItem: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' },
     prodLeft: { display: 'flex', alignItems: 'center', gap: '10px' },

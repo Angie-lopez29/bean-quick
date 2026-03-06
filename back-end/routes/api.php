@@ -16,6 +16,7 @@ use App\Http\Controllers\SolicitudEmpresaController;
 use App\Http\Controllers\EmpresaActivacionController;
 use App\Http\Controllers\CalificacionController;
 use App\Http\Controllers\EmpresaDashboardController;
+use App\Http\Controllers\PagoController;
 
 /*
 |--------------------------------------------------------------------------
@@ -48,6 +49,9 @@ Route::post('/login', [AuthenticatedSessionController::class, 'store']);
 Route::post('/solicitud-empresa', [SolicitudEmpresaController::class, 'store']);
 Route::get('/empresa/validar-token/{token}', [EmpresaActivacionController::class, 'validarToken']);
 Route::post('/empresa/activar/{token}', [EmpresaActivacionController::class, 'store']);
+
+// Webhook para recibir notificaciones de pago de Mercado Pago
+Route::post('/webhook/mercadopago', [PagoController::class, 'webhook']);
 
 
 /**
@@ -132,6 +136,9 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/empresas', [ClienteController::class, 'indexEmpresas']);
         Route::get('/empresa/{id}', [ClienteController::class, 'showEmpresa']);
         Route::get('/empresa/{id}/productos', [ClienteController::class, 'productosPorEmpresa']);
+
+        //ruta para procesar el pago de un pedido
+        Route::post('/pedidos/{id}/pagar', [PagoController::class, 'pagar']);
 
         // Gestión de Carrito de Compras
         Route::prefix('carrito')->group(function () {

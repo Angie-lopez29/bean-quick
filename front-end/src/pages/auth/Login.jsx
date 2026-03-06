@@ -68,62 +68,72 @@ const Login = () => {
     // FUNCIÓN 2: Cuando el usuario envía el formulario
     // ========================================
     const handleSubmit = async (e) => {
-        // Evitamos que la página se recargue (comportamiento por defecto)
-        e.preventDefault();
+    e.preventDefault();
 
-        // Limpiamos cualquier error anterior
-        setError('');
+    setError('');
 
-        // Activamos el estado de "cargando" (loading = true)
-        setLoading(true);
+    // ============================
+    // VALIDACIONES PERSONALIZADAS
+    // ============================
 
-        try {
-            // Intentamos enviar los datos al servidor
-            // Es como tocar la puerta del servidor y darle el email y contraseña
-            const response = await axios.post(`${API_URL}/login`, formData);
+    // 1️⃣ Validar email vacío
+    if (!formData.email.trim()) {
+        setError('El correo electrónico es obligatorio.');
+        return;
+    }
 
-            // Extraemos la información que nos devuelve el servidor
-            const { token, user, status } = response.data;
+    // 2️⃣ Validar formato de email
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(formData.email)) {
+        setError('Ingresa un correo electrónico válido.');
+        return;
+    }
 
-            // Si el servidor dice "success" (éxito)
-            if (status === 'success') {
-                // Guardamos el token (como una llave de acceso) en el navegador
-                localStorage.setItem('AUTH_TOKEN', token);
+    // 3️⃣ Validar contraseña vacía
+    if (!formData.password.trim()) {
+        setError('La contraseña es obligatoria.');
+        return;
+    }
 
-                // Guardamos el rol del usuario (cliente, empresa o admin)
-                localStorage.setItem('USER_ROLE', user.rol);
+    // 4️⃣ Validar longitud mínima contraseña
+    if (formData.password.length < 6) {
+        setError('La contraseña debe tener al menos 6 caracteres.');
+        return;
+    }
 
-                // Guardamos el nombre del usuario
-                localStorage.setItem('USER_NAME', user.name);
+    // ============================
+    // FIN VALIDACIONES
+    // ============================
 
-                // Configuramos axios para que siempre envíe el token en futuras peticiones
-                // Es como mostrar tu credencial cada vez que pides algo
-                axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+    setLoading(true);
 
-                // Creamos un mapa de rutas: cada tipo de usuario va a su página
-                const routes = {
-                    cliente: '/cliente/dashboard',  // Clientes van aquí
-                    empresa: '/empresa/panel',      // Empresas van aquí
-                    admin: '/admin/dashboard'       // Administradores van aquí
-                };
+    try {
+        const response = await axios.post(`${API_URL}/login`, formData);
 
-                // Enviamos al usuario a su página correspondiente según su rol
-                // Si el rol no existe, lo enviamos a la página principal '/'
-                navigate(routes[user.rol] || '/');
+        const { token, user, status } = response.data;
 
-                // Recargamos la página para que los cambios se apliquen
-                window.location.reload();
-            }
-        } catch (err) {
-            // Si algo sale mal (contraseña incorrecta, sin internet, etc.)
-            // Mostramos el mensaje de error que nos envió el servidor
-            // Si no hay mensaje específico, mostramos "Error de conexión"
-            setError(err.response?.data.message || 'Error de conexión');
-        } finally {
-            // Pase lo que pase (éxito o error), apagamos el estado de "cargando"
-            setLoading(false);
+        if (status === 'success') {
+            localStorage.setItem('AUTH_TOKEN', token);
+            localStorage.setItem('USER_ROLE', user.rol);
+            localStorage.setItem('USER_NAME', user.name);
+
+            axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+
+            const routes = {
+                cliente: '/cliente/dashboard',
+                empresa: '/empresa/panel',
+                admin: '/admin/dashboard'
+            };
+
+            navigate(routes[user.rol] || '/');
+            window.location.reload();
         }
-    };
+    } catch (err) {
+        setError(err.response?.data.message || 'Error de conexión');
+    } finally {
+        setLoading(false);
+    }
+};
 
     // ========================================
     // PARTE VISUAL - Lo que se muestra en pantalla
@@ -221,18 +231,15 @@ const Login = () => {
                                     {/* Ícono de sobre */}
                                     <FaEnvelope style={styles.inputIcon} />
                                     <input
-                                        type="email"
-                                        name="email"
-                                        style={styles.input}
-                                        placeholder="tu@correo.com"
-                                        value={formData.email}
-                                        onChange={handleChange}
-                                        // Cuando el usuario hace clic aquí
-                                        onFocus={() => setFocusedInput('email')}
-                                        // Cuando el usuario sale del campo
-                                        onBlur={() => setFocusedInput('')}
-                                        required // Este campo es obligatorio
-                                    />
+                                            type="email"
+                                            name="email"
+                                            style={styles.input}
+                                            placeholder="tu@correo.com"
+                                            value={formData.email}
+                                            onChange={handleChange}
+                                            onFocus={() => setFocusedInput('email')}
+                                            onBlur={() => setFocusedInput('')}
+                                        />
                                 </div>
                             </div>
 
@@ -255,11 +262,8 @@ const Login = () => {
                                         placeholder="••••••••"
                                         value={formData.password}
                                         onChange={handleChange}
-                                        // Cuando el usuario hace clic aquí
                                         onFocus={() => setFocusedInput('password')}
-                                        // Cuando el usuario sale del campo
                                         onBlur={() => setFocusedInput('')}
-                                        required // Este campo es obligatorio
                                     />
                                 </div>
                             </div>

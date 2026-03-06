@@ -9,12 +9,12 @@ import LayoutEmpresa from '../components/LayoutEmpresa';
 const GestionPedidosEmpresa = () => {
     const [pedidos, setPedidos] = useState([]);
     const [empresa, setEmpresa] = useState(null); 
-    const [filtro, setFiltro] = useState('Pendiente'); 
+    const [filtro, setFiltro] = useState('Pagado'); 
     const [loading, setLoading] = useState(true);
     const [expandido, setExpandido] = useState({}); 
     const navigate = useNavigate();
 
-    const estados = ['Pendiente', 'Preparando', 'Listo', 'Entregado', 'Cancelado'];
+    const estados = ['Pagado', 'Preparando', 'Listo', 'Entregado', 'Cancelado'];
 
     useEffect(() => {
         const cargarDatosIniciales = async () => {
@@ -137,7 +137,7 @@ const GestionPedidosEmpresa = () => {
                                     <div style={styles.actionCol}>
                                         <div style={styles.totalPrice}>${parseFloat(pedido.total).toLocaleString()}</div>
                                         <div style={styles.buttonGroup}>
-                                            {pedido.estado === 'Pendiente' && (
+                                            {pedido.estado === 'Pagado' && (
                                                 <button style={styles.btnPrep} onClick={() => cambiarEstado(pedido.id, 'Preparando')}>Empezar Cocina</button>
                                             )}
                                             {pedido.estado === 'Preparando' && (
@@ -148,7 +148,7 @@ const GestionPedidosEmpresa = () => {
                                             )}
                                             
                                             {/* BOTÓN CANCELAR (Solo para estados no finales) */}
-                                            {['Pendiente', 'Preparando', 'Listo'].includes(pedido.estado) && (
+                                            {['Pagado', 'Preparando', 'Listo'].includes(pedido.estado) && (
                                                 <button style={styles.btnCancel} onClick={() => cambiarEstado(pedido.id, 'Cancelado')}>Cancelar Pedido</button>
                                             )}
 

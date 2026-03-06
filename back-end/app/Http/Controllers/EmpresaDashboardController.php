@@ -16,12 +16,7 @@ use Barryvdh\DomPDF\Facade\Pdf;
 
 class EmpresaDashboardController extends Controller
 {
-    /**
-     * ============================
-     * MÉTODO PRIVADO REUTILIZABLE
-     * ============================
-     */
-    private function obtenerDatosDashboard($user): array
+    private function obtenerDatosDashboard($user, string $periodo = 'semana'): array
     {
         $empresa = Empresa::where('user_id', $user->id)->first();
 
@@ -30,70 +25,121 @@ class EmpresaDashboardController extends Controller
         }
 
         $estadosExitosos = ['entregado', 'Entregado', 'ENTREGADO'];
-        $hoy = Carbon::today();
 
-        /* =====================
-         * VENTAS HOY
-         * ===================== */
+        // RANGO DE FECHAS SEGÚN PERIODO
+        switch ($periodo) {
+            case 'dia':
+                $fechaInicio = Carbon::today()->startOfDay();
+                $fechaFin    = Carbon::today()->endOfDay();
+                break;
+            case 'mes':
+                $fechaInicio = Carbon::now()->startOfMonth();
+                $fechaFin    = Carbon::now()->endOfMonth();
+                break;
+            case 'anio':
+                $fechaInicio = Carbon::now()->startOfYear();
+                $fechaFin    = Carbon::now()->endOfYear();
+                break;
+            case 'semana':
+            default:
+                $fechaInicio = Carbon::now()->subDays(6)->startOfDay();
+                $fechaFin    = Carbon::now()->endOfDay();
+                break;
+        }
+
+        // VENTAS EN EL PERIODO (mismo nombre ventas_hoy para no romper el frontend)
         $ventasHoy = Pedido::where('empresa_id', $empresa->id)
-        ->whereIn('estado', $estadosExitosos)
-        ->whereBetween('created_at', [
-            Carbon::today()->startOfDay(),
-            Carbon::today()->endOfDay()
-        ])
-        ->sum('total') ?? 0;
-        /* =====================
-         * CALIFICACIONES
-         * ===================== */
+            ->whereIn('estado', $estadosExitosos)
+            ->whereBetween('created_at', [$fechaInicio, $fechaFin])
+            ->sum('total') ?? 0;
+
+        // CALIFICACIONES (igual que el original, sin filtro de fecha)
         $statsCalificaciones = Calificacion::whereHas('producto', function ($q) use ($empresa) {
             $q->where('empresa_id', $empresa->id);
         })
         ->selectRaw('COUNT(*) as total, AVG(estrellas) as promedio')
         ->first();
 
-        /* =====================
-         * VENTAS SEMANALES
-         * ===================== */
-        $diasLabels = [];
-        for ($i = 6; $i >= 0; $i--) {
-            $diasLabels[now()->subDays($i)->format('d/m')] = 0;
-        }
+        // GRÁFICO SEGÚN PERIODO
+        $ventasGrafico = [];
 
-        $ventasReales = Pedido::where('empresa_id', $empresa->id)
-            ->whereIn('estado', $estadosExitosos)
-            ->where('created_at', '>=', now()->subDays(6)->startOfDay())
-            ->selectRaw('DATE_FORMAT(created_at, "%d/%m") as label, SUM(total) as total')
-            ->groupBy('label')
-            ->get();
+        if ($periodo === 'dia') {
+            $labels = [];
+            for ($h = 0; $h < 24; $h++) {
+                $labels[str_pad($h, 2, '0', STR_PAD_LEFT) . 'h'] = 0;
+            }
+            $ventasReales = Pedido::where('empresa_id', $empresa->id)
+                ->whereIn('estado', $estadosExitosos)
+                ->whereBetween('created_at', [$fechaInicio, $fechaFin])
+                ->selectRaw('DATE_FORMAT(created_at, "%Hh") as label, SUM(total) as total')
+                ->groupBy('label')
+                ->get();
+            foreach ($ventasReales as $v) {
+                if (isset($labels[$v->label])) {
+                    $labels[$v->label] = round((float)$v->total, 2);
+                }
+            }
+            foreach ($labels as $label => $total) {
+                $ventasGrafico[] = ['label' => $label, 'total' => $total];
+            }
 
-        foreach ($ventasReales as $venta) {
-            if (isset($diasLabels[$venta->label])) {
-                $diasLabels[$venta->label] = round((float)$venta->total, 2);
+        } elseif ($periodo === 'semana') {
+            // IGUAL QUE EL ORIGINAL
+            $labels = [];
+            for ($i = 6; $i >= 0; $i--) {
+                $labels[now()->subDays($i)->format('d/m')] = 0;
+            }
+            $ventasReales = Pedido::where('empresa_id', $empresa->id)
+                ->whereIn('estado', $estadosExitosos)
+                ->where('created_at', '>=', now()->subDays(6)->startOfDay())
+                ->selectRaw('DATE_FORMAT(created_at, "%d/%m") as label, SUM(total) as total')
+                ->groupBy('label')
+                ->get();
+            foreach ($ventasReales as $v) {
+                if (isset($labels[$v->label])) {
+                    $labels[$v->label] = round((float)$v->total, 2);
+                }
+            }
+            foreach ($labels as $label => $total) {
+                $ventasGrafico[] = ['label' => $label, 'total' => $total];
+            }
+
+        } elseif ($periodo === 'mes') {
+            $diasEnMes = Carbon::now()->daysInMonth;
+            $labels = [];
+            for ($d = 1; $d <= $diasEnMes; $d++) {
+                $labels[str_pad($d, 2, '0', STR_PAD_LEFT)] = 0;
+            }
+            $ventasReales = Pedido::where('empresa_id', $empresa->id)
+                ->whereIn('estado', $estadosExitosos)
+                ->whereBetween('created_at', [$fechaInicio, $fechaFin])
+                ->selectRaw('DATE_FORMAT(created_at, "%d") as label, SUM(total) as total')
+                ->groupBy('label')
+                ->get();
+            foreach ($ventasReales as $v) {
+                if (isset($labels[$v->label])) {
+                    $labels[$v->label] = round((float)$v->total, 2);
+                }
+            }
+            foreach ($labels as $label => $total) {
+                $ventasGrafico[] = ['label' => $label, 'total' => $total];
+            }
+
+        } elseif ($periodo === 'anio') {
+            // IGUAL QUE EL ORIGINAL ventas_anuales
+            $ventasReales = Pedido::where('empresa_id', $empresa->id)
+                ->whereIn('estado', $estadosExitosos)
+                ->whereYear('created_at', date('Y'))
+                ->selectRaw('MONTHNAME(created_at) as label, SUM(total) as total')
+                ->groupBy('label')
+                ->orderByRaw('MIN(created_at)')
+                ->get();
+            foreach ($ventasReales as $v) {
+                $ventasGrafico[] = ['label' => $v->label, 'total' => round((float)$v->total, 2)];
             }
         }
 
-        $ventasSemanalesFinal = [];
-        foreach ($diasLabels as $label => $total) {
-            $ventasSemanalesFinal[] = [
-                'label' => $label,
-                'total' => $total
-            ];
-        }
-
-        /* =====================
-         * VENTAS ANUALES
-         * ===================== */
-        $ventasAnuales = Pedido::where('empresa_id', $empresa->id)
-            ->whereIn('estado', $estadosExitosos)
-            ->whereYear('created_at', date('Y'))
-            ->selectRaw('MONTHNAME(created_at) as label, SUM(total) as total')
-            ->groupBy('label')
-            ->orderByRaw('MIN(created_at)')
-            ->get();
-
-        /* =====================
-         * TOP PRODUCTOS
-         * ===================== */
+        // TOP PRODUCTOS (igual que el original)
         $topProductos = Producto::where('empresa_id', $empresa->id)
             ->withSum(['pedidos as total_unidades' => function ($query) use ($estadosExitosos) {
                 $query->whereIn('estado', $estadosExitosos);
@@ -110,9 +156,7 @@ class EmpresaDashboardController extends Controller
                 ];
             });
 
-        /* =====================
-         * ÚLTIMOS PEDIDOS
-         * ===================== */
+        // ÚLTIMOS PEDIDOS (igual que el original)
         $ultimosPedidos = Pedido::where('empresa_id', $empresa->id)
             ->with('cliente:id,name')
             ->latest()
@@ -120,82 +164,73 @@ class EmpresaDashboardController extends Controller
             ->get()
             ->map(function ($pedido) {
                 return [
-                    'id' => $pedido->id,
+                    'id'      => $pedido->id,
                     'cliente' => $pedido->cliente->name ?? 'Cliente Anónimo',
-                    'total' => $pedido->total,
-                    'estado' => $pedido->estado,
-                    'hora' => $pedido->created_at->diffForHumans()
+                    'total'   => $pedido->total,
+                    'estado'  => $pedido->estado,
+                    'hora'    => $pedido->created_at->diffForHumans()
                 ];
             });
 
         return [
-            'empresa' => $empresa,
+            'empresa'     => $empresa,
+            'periodo'     => $periodo,
             'stats_cards' => [
-                'ventas_hoy' => round((float)$ventasHoy, 2),
+                'ventas_hoy'            => round((float)$ventasHoy, 2), // mismo nombre que el original
                 'promedio_calificacion' => round($statsCalificaciones->promedio ?? 0, 1),
-                'total_calificaciones' => $statsCalificaciones->total ?? 0,
+                'total_calificaciones'  => $statsCalificaciones->total ?? 0,
             ],
             'charts' => [
-                'ventas_semanales' => $ventasSemanalesFinal,
-                'ventas_anuales' => $ventasAnuales
+                'ventas_semanales' => $ventasGrafico, // mismo nombre que el original
+                'ventas_anuales'   => $ventasGrafico, // mismo nombre que el original
             ],
-            'top_productos' => $topProductos,
+            'top_productos'   => $topProductos,
             'ultimos_pedidos' => $ultimosPedidos
         ];
     }
 
-    /**
-     * ============================
-     * DASHBOARD (API JSON)
-     * ============================
-     */
-    public function index(): JsonResponse
+    public function index(Request $request): JsonResponse
     {
         try {
-            $data = $this->obtenerDatosDashboard(Auth::user());
+            $periodo = $request->query('periodo', 'semana');
+            $periodosValidos = ['dia', 'semana', 'mes', 'anio'];
+
+            if (!in_array($periodo, $periodosValidos)) {
+                $periodo = 'semana';
+            }
+
+            $data = $this->obtenerDatosDashboard(Auth::user(), $periodo);
             return response()->json($data);
         } catch (\Exception $e) {
             return response()->json([
-                'error' => 'Error en el servidor',
+                'error'   => 'Error en el servidor',
                 'detalle' => $e->getMessage()
             ], 500);
         }
     }
 
-    /**
-     * ============================
-     * PDF DEL DASHBOARD
-     * ============================
-     */
     public function descargarReporte(Request $request)
-{
-    $user = $request->user();
+    {
+        $user = $request->user();
 
-    if (!$user) {
-        abort(401, 'No autenticado');
+        if (!$user) {
+            abort(401, 'No autenticado');
+        }
+
+        $periodo = $request->query('periodo', 'semana');
+        $data    = $this->obtenerDatosDashboard($user, $periodo);
+
+        $pdf = Pdf::loadView('pdf.dashboard_empresa', [
+            'data' => $data
+        ])->setPaper('a4', 'portrait');
+
+        return $pdf->download('reporte-dashboard-empresa.pdf');
     }
 
-    // 👇 reutilizamos EXACTAMENTE los mismos datos del dashboard
-    $data = $this->obtenerDatosDashboard($user);
-
-    $pdf = Pdf::loadView('pdf.dashboard_empresa', [
-        'data' => $data
-    ])->setPaper('a4', 'portrait');
-
-    return $pdf->download('reporte-dashboard-empresa.pdf');
-}
-
-
-
-    /**
-     * ============================
-     * CALIFICACIONES
-     * ============================
-     */
     public function calificaciones(Request $request): JsonResponse
     {
         try {
-            $user = $request->user();
+            $user    = $request->user();
             $empresa = Empresa::where('user_id', $user->id)->first();
 
             if (!$empresa) {
@@ -218,7 +253,7 @@ class EmpresaDashboardController extends Controller
 
         } catch (\Exception $e) {
             return response()->json([
-                'error' => 'Error interno al obtener calificaciones',
+                'error'   => 'Error interno al obtener calificaciones',
                 'detalle' => $e->getMessage()
             ], 500);
         }

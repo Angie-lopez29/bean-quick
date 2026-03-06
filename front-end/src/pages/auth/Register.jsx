@@ -34,58 +34,101 @@ const Register = () => {
 
     // Esta función se ejecuta cuando el usuario presiona el botón "Crear mi cuenta"
     const handleSubmit = async (e) => {
-        e.preventDefault(); // Evita que la página se recargue (comportamiento por defecto de los formularios)
-        setErrors({}); // Limpiamos cualquier error anterior
-
-        // Validación: verificamos que las dos contraseñas sean iguales
-        if (formData.password !== formData.password_confirmation) {
-            setErrors({ password: ['Las contraseñas no coinciden.'] }); // Mostramos un mensaje de error
-            return; // Detenemos aquí, no enviamos nada al servidor
+        e.preventDefault();
+        setErrors({});
+    
+        const newErrors = {};
+    
+        // ============================
+        // VALIDACIONES PERSONALIZADAS
+        // ============================
+    
+        // 1️⃣ Validar nombre
+        if (!formData.name.trim()) {
+            newErrors.name = ['El nombre es obligatorio.'];
+        } else if (formData.name.trim().length < 3) {
+            newErrors.name = ['El nombre debe tener al menos 3 caracteres.'];
         }
-
-        setLoading(true); // Indicamos que estamos cargando (para mostrar el spinner)
-
+    
+        // 2️⃣ Validar email vacío
+        if (!formData.email.trim()) {
+            newErrors.email = ['El correo electrónico es obligatorio.'];
+        } else {
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!emailRegex.test(formData.email)) {
+                newErrors.email = ['Ingresa un correo electrónico válido.'];
+            }
+        }
+    
+        // 3️⃣ Validar contraseña vacía
+        if (!formData.password.trim()) {
+            newErrors.password = ['La contraseña es obligatoria.'];
+        } else {
+            // 4️⃣ Validar seguridad contraseña
+            const passwordRegex = /^(?=.*[A-Z])(?=.*\d).{8,}$/;
+            if (!passwordRegex.test(formData.password)) {
+                newErrors.password = [
+                    'Debe tener mínimo 8 caracteres, una mayúscula y un número.'
+                ];
+            }
+        }
+    
+        // 5️⃣ Confirmación vacía
+        if (!formData.password_confirmation.trim()) {
+            newErrors.password_confirmation = ['Debes confirmar la contraseña.'];
+        }
+    
+        // 6️⃣ Verificar que coincidan
+        if (
+            formData.password &&
+            formData.password_confirmation &&
+            formData.password !== formData.password_confirmation
+        ) {
+            newErrors.password_confirmation = ['Las contraseñas no coinciden.'];
+        }
+    
+        // Si existen errores, no enviamos nada
+        if (Object.keys(newErrors).length > 0) {
+            setErrors(newErrors);
+            return;
+        }
+    
+        // ============================
+        // FIN VALIDACIONES
+        // ============================
+    
+        setLoading(true);
+    
         try {
-            // Intentamos enviar los datos al servidor para crear la cuenta
             const response = await axios.post(`${API_URL}/register`, formData);
-            
-            // Si todo sale bien, el servidor nos devuelve: token, información del usuario, y hacia dónde redirigir
+    
             const { token, user, redirectTo } = response.data;
-            
-            // Guardamos el token (como una llave digital) en el navegador
+    
             localStorage.setItem('AUTH_TOKEN', token);
-            // Guardamos el rol del usuario (admin, empresa, o cliente)
-            localStorage.setItem('USER_ROLE', user.rol || user.role); // Usamos rol o role por si el servidor envía cualquiera
-            // Guardamos el nombre del usuario
+            localStorage.setItem('USER_ROLE', user.rol || user.role);
             localStorage.setItem('USER_NAME', user.name);
-
-            // Configuramos axios para que incluya el token en todas las futuras peticiones
+    
             axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-
-            // Decidimos a qué página enviar al usuario según su rol
+    
             if (redirectTo) {
-                // Si el servidor nos dice exactamente a dónde ir, vamos ahí
                 navigate(redirectTo);
             } else {
-                // Si no, decidimos nosotros según el rol del usuario
                 const role = user.rol || user.role;
-                if (role === 'admin') navigate('/admin/dashboard'); // Los admin van al dashboard
-                else if (role === 'empresa') navigate('/empresa/perfil'); // Las empresas van a su perfil
-                else navigate('/productos'); // Los clientes van a ver productos
+                if (role === 'admin') navigate('/admin/dashboard');
+                else if (role === 'empresa') navigate('/empresa/perfil');
+                else navigate('/productos');
             }
-
+    
         } catch (err) {
-            // Si algo sale mal, manejamos el error
             if (err.response && err.response.status === 422) {
-                // Error 422 significa que los datos no son válidos (ej: email ya existe)
-                setErrors(err.response.data.errors); // Mostramos los errores que nos envía el servidor
+                setErrors(err.response.data.errors);
             } else {
-                // Cualquier otro error (ej: servidor apagado)
-                setErrors({ general: 'Error de conexión. Verifica que el servidor Laravel esté corriendo.' });
+                setErrors({
+                    general: 'Error de conexión. Verifica que el servidor Laravel esté corriendo.'
+                });
             }
         } finally {
-            // Siempre ejecutamos esto al final, haya funcionado o no
-            setLoading(false); // Dejamos de mostrar el estado de "cargando"
+            setLoading(false);
         }
     };
 
@@ -170,7 +213,7 @@ const Register = () => {
                         )}
 
                         {/* El formulario comienza aquí */}
-                        <form onSubmit={handleSubmit} style={styles.form}>
+                        <form onSubmit={handleSubmit} noValidate style={styles.form}>
                             {/* ========== CAMPO DE NOMBRE ========== */}
                             <div style={styles.inputGroup}>
                                 <label style={styles.label}>Nombre Completo</label>
@@ -189,7 +232,6 @@ const Register = () => {
                                         onChange={handleChange} // Se ejecuta al escribir
                                         onFocus={() => setFocusedInput('name')} // Marca este campo como enfocado
                                         onBlur={() => setFocusedInput('')} // Desmarca cuando sales del campo
-                                        required // Este campo es obligatorio
                                     />
                                 </div>
                                 {/* Si hay error en el nombre, mostramos el mensaje */}
@@ -214,7 +256,6 @@ const Register = () => {
                                         onChange={handleChange}
                                         onFocus={() => setFocusedInput('email')}
                                         onBlur={() => setFocusedInput('')}
-                                        required
                                     />
                                 </div>
                                 {errors.email && <small style={styles.errorText}>{errors.email[0]}</small>}
@@ -238,7 +279,6 @@ const Register = () => {
                                         onChange={handleChange}
                                         onFocus={() => setFocusedInput('password')}
                                         onBlur={() => setFocusedInput('')}
-                                        required
                                     />
                                 </div>
                                 {errors.password && <small style={styles.errorText}>{errors.password[0]}</small>}
@@ -261,7 +301,6 @@ const Register = () => {
                                         onChange={handleChange}
                                         onFocus={() => setFocusedInput('password_confirmation')}
                                         onBlur={() => setFocusedInput('')}
-                                        required
                                     />
                                 </div>
                             </div>

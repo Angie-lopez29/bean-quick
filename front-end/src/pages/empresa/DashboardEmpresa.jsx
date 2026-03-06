@@ -1,53 +1,71 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { FaBoxOpen, FaMoneyBillWave, FaStar, FaExpandAlt, FaTimes } from 'react-icons/fa';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts';
 
-// IMPORTAMOS TU LAYOUT
-import LayoutEmpresa from '../components/LayoutEmpresa'; 
+import LayoutEmpresa from '../components/LayoutEmpresa';
+
+const PERIODOS = [
+    { key: 'dia',    label: 'Hoy' },
+    { key: 'semana', label: 'Semana' },
+    { key: 'mes',    label: 'Mes' },
+    { key: 'anio',   label: 'Año' },
+];
+
+const PERIODO_LABEL = {
+    dia:    'de hoy',
+    semana: 'de esta semana',
+    mes:    'de este mes',
+    anio:   'de este año',
+};
 
 const DashboardEmpresa = () => {
     const navigate = useNavigate();
-    const [data, setData] = useState(null);
-    const [loading, setLoading] = useState(true);
-    const [modalOpen, setModalOpen] = useState(null);
+    const [data, setData]               = useState(null);
+    const [loading, setLoading]         = useState(true);
+    const [periodo, setPeriodo]         = useState('semana');
+    const [modalOpen, setModalOpen]     = useState(null);
 
-    // --- ESTADOS PARA FEEDBACK ---
     const [showFeedbackModal, setShowFeedbackModal] = useState(false);
-    const [calificaciones, setCalificaciones] = useState([]);
-    const [loadingFeedback, setLoadingFeedback] = useState(false);
-    const [isOpen, setIsOpen] = useState(true);
+    const [calificaciones, setCalificaciones]       = useState([]);
+    const [loadingFeedback, setLoadingFeedback]     = useState(false);
+
+    const [isOpen, setIsOpen]               = useState(true);
     const [updatingStatus, setUpdatingStatus] = useState(false);
 
-
-    useEffect(() => {
+    const fetchDashboardData = useCallback(async (periodoActual) => {
         const token = localStorage.getItem('AUTH_TOKEN');
         if (!token) { navigate('/login'); return; }
 
-        const fetchDashboardData = async () => {
-            try {
-                const response = await axios.get('http://127.0.0.1:8000/api/empresa/dashboard', {
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
-                setData(response.data);
-                setIsOpen(response.data.empresa.is_open);
-            } catch (error) {
-                console.error("Error cargando datos:", error);
-            } finally {
-                setLoading(false);
-            }
-        };
-
-        fetchDashboardData();
+        setLoading(true);
+        try {
+            const response = await axios.get('http://127.0.0.1:8000/api/empresa/dashboard', {
+                headers: { 'Authorization': `Bearer ${token}` },
+                params:  { periodo: periodoActual }
+            });
+            setData(response.data);
+            setIsOpen(response.data.empresa.is_open);
+        } catch (error) {
+            console.error("Error cargando datos:", error);
+        } finally {
+            setLoading(false);
+        }
     }, [navigate]);
 
-    // --- FUNCIÓN PARA VER FEEDBACK ---
+    useEffect(() => {
+        fetchDashboardData(periodo);
+    }, [periodo, fetchDashboardData]);
+
+    const handlePeriodo = (nuevoPeriodo) => {
+        if (nuevoPeriodo === periodo) return;
+        setPeriodo(nuevoPeriodo);
+    };
+
     const verFeedback = async () => {
         setLoadingFeedback(true);
         setShowFeedbackModal(true);
         const token = localStorage.getItem('AUTH_TOKEN');
-
         try {
             const response = await axios.get(`http://127.0.0.1:8000/api/empresa/calificaciones`, {
                 headers: { 'Authorization': `Bearer ${token}` }
@@ -60,28 +78,22 @@ const DashboardEmpresa = () => {
         }
     };
 
-    // --- FUNCIÓN PARA DESCARGAR REPORTE PDF ---
-
     const descargarReporte = async () => {
-    const token = localStorage.getItem('AUTH_TOKEN');
-
+        const token = localStorage.getItem('AUTH_TOKEN');
         try {
             const response = await axios.get(
                 'http://127.0.0.1:8000/api/empresa/dashboard/pdf',
                 {
-                    headers: {
-                        Authorization: `Bearer ${token}`,
-                    },
+                    headers: { Authorization: `Bearer ${token}` },
+                    params:  { periodo },
                     responseType: 'blob',
                 }
             );
-    
             const file = new Blob([response.data], { type: 'application/pdf' });
-            const url = window.URL.createObjectURL(file);
-    
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = 'reporte-dashboard.pdf';
+            const url  = window.URL.createObjectURL(file);
+            const a    = document.createElement('a');
+            a.href     = url;
+            a.download = `reporte-dashboard-${periodo}.pdf`;
             document.body.appendChild(a);
             a.click();
             a.remove();
@@ -91,21 +103,16 @@ const DashboardEmpresa = () => {
         }
     };
 
-    // --- FUNCIÓN PARA TOGGLE ESTADO DE LA EMPRESA ---
-
     const toggleEstadoEmpresa = async () => {
-    if (updatingStatus) return;
-
-    setUpdatingStatus(true);
-    const token = localStorage.getItem('AUTH_TOKEN');
-
+        if (updatingStatus) return;
+        setUpdatingStatus(true);
+        const token = localStorage.getItem('AUTH_TOKEN');
         try {
             const response = await axios.post(
                 'http://127.0.0.1:8000/api/empresa/toggle-estado',
                 {},
                 { headers: { Authorization: `Bearer ${token}` } }
             );
-    
             setIsOpen(response.data.is_open);
         } catch (error) {
             alert('Error cambiando el estado de la tienda');
@@ -115,43 +122,40 @@ const DashboardEmpresa = () => {
         }
     };
 
+    if (loading) return (
+        <div style={{ padding: '50px', textAlign: 'center', color: '#64748b' }}>
+            Cargando panel...
+        </div>
+    );
 
-
-    if (loading) return <div style={{ padding: '50px', textAlign: 'center' }}>Cargando panel...</div>;
-
-    const stats = data?.stats_cards || {};
-    const charts = data?.charts || {};
-    const topProductos = data?.top_productos || [];
+    // Mismos nombres que el original
+    const stats          = data?.stats_cards || {};
+    const charts         = data?.charts || {};
+    const topProductos   = data?.top_productos || [];
     const ultimosPedidos = data?.ultimos_pedidos || [];
+
+    // Para el gráfico: semana y dia usan ventas_semanales, mes y anio usan ventas_anuales
+    const datosGrafico = (periodo === 'mes' || periodo === 'anio')
+        ? (charts.ventas_anuales || [])
+        : (charts.ventas_semanales || []);
+
+    const usarLineChart = periodo === 'semana' || periodo === 'dia';
 
     return (
         <LayoutEmpresa empresa={data?.empresa}>
-            {/* --- CONTENIDO PRINCIPAL --- */}
 
-            <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '15px',
-                marginBottom: '25px'
-            }}>
-                <span style={{
-                    fontWeight: 'bold',
-                    color: isOpen ? '#16a34a' : '#dc2626'
-                }}>
+            {/* ESTADO TIENDA */}
+            <div style={styles.tiendaRow}>
+                <span style={{ fontWeight: 'bold', color: isOpen ? '#16a34a' : '#dc2626' }}>
                     {isOpen ? '🟢 Tienda Abierta' : '🔴 Tienda Cerrada'}
                 </span>
-            
                 <button
                     onClick={toggleEstadoEmpresa}
                     disabled={updatingStatus}
                     style={{
-                        padding: '8px 16px',
-                        borderRadius: '999px',
-                        border: 'none',
-                        cursor: updatingStatus ? 'not-allowed' : 'pointer',
+                        ...styles.btnToggle,
                         background: isOpen ? '#dc2626' : '#16a34a',
-                        color: 'white',
-                        fontWeight: 'bold'
+                        opacity: updatingStatus ? 0.6 : 1,
                     }}
                 >
                     {isOpen ? 'Cerrar tienda' : 'Abrir tienda'}
@@ -159,33 +163,38 @@ const DashboardEmpresa = () => {
                 <h5>En caso de cerrar la tienda, los clientes no podrán realizar pedidos.</h5>
             </div>
 
+            {/* FILTRO DE PERIODO + BOTÓN PDF */}
+            <div style={styles.headerRow}>
+                <div style={styles.periodoSelector}>
+                    {PERIODOS.map((p) => (
+                        <button
+                            key={p.key}
+                            onClick={() => handlePeriodo(p.key)}
+                            style={{
+                                ...styles.periodoBtn,
+                                ...(periodo === p.key ? styles.periodoBtnActive : {})
+                            }}
+                        >
+                            {p.label}
+                        </button>
+                    ))}
+                </div>
 
-            <button
-                onClick={descargarReporte}
-                style={{
-                    background: '#1e293b',
-                    color: 'white',
-                    padding: '12px 20px',
-                    borderRadius: '10px',
-                    border: 'none',
-                    fontWeight: 'bold',
-                    cursor: 'pointer',
-                    marginBottom: '20px'
-                }}
-            >
-                📄 Descargar Reporte Pdf
-            </button>
+                <button onClick={descargarReporte} style={styles.btnPdf}>
+                    📄 Descargar Reporte PDF
+                </button>
+            </div>
 
+            {/* KPI CARDS - mismos nombres que el original */}
             <section style={styles.sectionRow}>
                 <div style={styles.cardKpi}>
                     <div style={styles.kpiIcon}><FaMoneyBillWave color="#2ecc71" /></div>
                     <div>
-                        <p style={styles.kpiLabel}>Ventas Hoy</p>
+                        <p style={styles.kpiLabel}>Ventas {PERIODO_LABEL[periodo]}</p>
                         <h3 style={styles.kpiValue}>${stats.ventas_hoy}</h3>
                     </div>
                 </div>
-                
-                {/* KPI DE REPUTACIÓN (AHORA CLICKEABLE) */}
+
                 <div style={{...styles.cardKpi, cursor: 'pointer'}} onClick={verFeedback}>
                     <div style={styles.kpiIcon}><FaStar color="#f1c40f" /></div>
                     <div>
@@ -203,44 +212,38 @@ const DashboardEmpresa = () => {
                 </div>
             </section>
 
+            {/* GRÁFICO ÚNICO ADAPTABLE */}
             <section style={styles.gridCharts}>
                 <div style={styles.chartContainer}>
                     <div style={styles.chartHeader}>
-                        <h3>Rendimiento Semanal</h3>
-                        <button onClick={() => setModalOpen('semanal')} style={styles.btnExpand}><FaExpandAlt /></button>
+                        <h3>Rendimiento — {PERIODOS.find(p => p.key === periodo)?.label}</h3>
+                        <button onClick={() => setModalOpen('grafico')} style={styles.btnExpand}><FaExpandAlt /></button>
                     </div>
                     <div style={{ height: '250px' }}>
                         <ResponsiveContainer width="100%" height="100%">
-                            <LineChart data={charts.ventas_semanales || []}>
-                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#eee" />
-                                <XAxis dataKey="label" fontSize={12} />
-                                <YAxis fontSize={12} />
-                                <Tooltip />
-                                <Line type="monotone" dataKey="total" stroke="#6f4e37" strokeWidth={3} />
-                            </LineChart>
-                        </ResponsiveContainer>
-                    </div>
-                </div>
-
-                <div style={styles.chartContainer}>
-                    <div style={styles.chartHeader}>
-                        <h3>Ventas Mensuales</h3>
-                        <button onClick={() => setModalOpen('anual')} style={styles.btnExpand}><FaExpandAlt /></button>
-                    </div>
-                    <div style={{ height: '250px' }}>
-                        <ResponsiveContainer width="100%" height="100%">
-                            <BarChart data={charts.ventas_anuales || []}>
-                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#eee" />
-                                <XAxis dataKey="label" fontSize={12} />
-                                <YAxis fontSize={12} />
-                                <Tooltip />
-                                <Bar dataKey="total" fill="#d35400" radius={[4, 4, 0, 0]} />
-                            </BarChart>
+                            {usarLineChart ? (
+                                <LineChart data={datosGrafico}>
+                                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#eee" />
+                                    <XAxis dataKey="label" fontSize={12} />
+                                    <YAxis fontSize={12} />
+                                    <Tooltip />
+                                    <Line type="monotone" dataKey="total" stroke="#6f4e37" strokeWidth={3} />
+                                </LineChart>
+                            ) : (
+                                <BarChart data={datosGrafico}>
+                                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#eee" />
+                                    <XAxis dataKey="label" fontSize={12} />
+                                    <YAxis fontSize={12} />
+                                    <Tooltip />
+                                    <Bar dataKey="total" fill="#d35400" radius={[4, 4, 0, 0]} />
+                                </BarChart>
+                            )}
                         </ResponsiveContainer>
                     </div>
                 </div>
             </section>
 
+            {/* RANKING + PEDIDOS */}
             <section style={styles.bottomGrid}>
                 <div style={styles.rankingCard}>
                     <h3>Ranking de Productos</h3>
@@ -249,11 +252,7 @@ const DashboardEmpresa = () => {
                             <div key={i} style={styles.rankingItem}>
                                 <span style={styles.rankNum}>{i + 1}</span>
                                 <div style={{ flex: 1 }}>
-                                    <div><img 
-                                                src={`${prod.imagen}`} 
-                                                alt={prod.nombre} 
-                                                style={styles.img} 
-                                            /></div>
+                                    <div><img src={`${prod.imagen}`} alt={prod.nombre} style={styles.img} /></div>
                                     <div style={{ fontWeight: 'bold' }}>{prod.nombre}</div>
                                     <div style={{ fontSize: '12px', color: '#888' }}>${prod.precio}</div>
                                 </div>
@@ -280,7 +279,7 @@ const DashboardEmpresa = () => {
                 </div>
             </section>
 
-            {/* --- MODAL DE FEEDBACK (OPINIONES) --- */}
+            {/* MODAL FEEDBACK */}
             {showFeedbackModal && (
                 <div style={styles.modalOverlay} onClick={() => setShowFeedbackModal(false)}>
                     <div style={{ ...styles.modalContent, maxWidth: '600px' }} onClick={(e) => e.stopPropagation()}>
@@ -314,23 +313,25 @@ const DashboardEmpresa = () => {
                 </div>
             )}
 
-            {/* MODALES DE EXPANSIÓN DE GRÁFICAS */}
+            {/* MODAL GRÁFICO EXPANDIDO */}
             {modalOpen && (
                 <div style={styles.modalOverlay} onClick={() => setModalOpen(null)}>
                     <div style={styles.modalContent} onClick={(e) => e.stopPropagation()}>
                         <div style={styles.modalHeader}>
-                            <h3>Vista Detallada</h3>
+                            <h3>Vista Detallada — {PERIODOS.find(p => p.key === periodo)?.label}</h3>
                             <button onClick={() => setModalOpen(null)} style={styles.btnClose}><FaTimes /></button>
                         </div>
                         <div style={{ height: '400px' }}>
                             <ResponsiveContainer width="100%" height="100%">
-                                {modalOpen === 'semanal' ? (
-                                    <LineChart data={charts.ventas_semanales || []}>
-                                        <CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="label" /><YAxis /><Tooltip /><Line type="monotone" dataKey="total" stroke="#6f4e37" strokeWidth={4} />
+                                {usarLineChart ? (
+                                    <LineChart data={datosGrafico}>
+                                        <CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="label" /><YAxis /><Tooltip />
+                                        <Line type="monotone" dataKey="total" stroke="#6f4e37" strokeWidth={4} />
                                     </LineChart>
                                 ) : (
-                                    <BarChart data={charts.ventas_anuales || []}>
-                                        <CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="label" /><YAxis /><Tooltip /><Bar dataKey="total" fill="#d35400" />
+                                    <BarChart data={datosGrafico}>
+                                        <CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="label" /><YAxis /><Tooltip />
+                                        <Bar dataKey="total" fill="#d35400" />
                                     </BarChart>
                                 )}
                             </ResponsiveContainer>
@@ -338,31 +339,35 @@ const DashboardEmpresa = () => {
                     </div>
                 </div>
             )}
+
         </LayoutEmpresa>
     );
 };
 
-// Estilos
 const styles = {
+    tiendaRow:   { display: 'flex', alignItems: 'center', gap: '15px', marginBottom: '25px' },
+    btnToggle:   { padding: '8px 16px', borderRadius: '999px', border: 'none', cursor: 'pointer', color: 'white', fontWeight: 'bold' },
+    headerRow:   { display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '25px', flexWrap: 'wrap', gap: '12px' },
+    periodoSelector: { display: 'flex', gap: '6px', background: '#f1f5f9', borderRadius: '12px', padding: '4px' },
+    periodoBtn: {
+        padding: '8px 18px', borderRadius: '9px', border: 'none', cursor: 'pointer',
+        background: 'transparent', fontWeight: '600', fontSize: '14px', color: '#64748b',
+        transition: 'all 0.2s ease'
+    },
+    periodoBtnActive: { background: 'white', color: '#1e293b', boxShadow: '0 1px 4px rgba(0,0,0,0.1)' },
+    btnPdf: { background: '#1e293b', color: 'white', padding: '12px 20px', borderRadius: '10px', border: 'none', fontWeight: 'bold', cursor: 'pointer' },
     sectionRow: { display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '25px', marginBottom: '40px' },
     cardKpi: { background: 'white', padding: '20px', borderRadius: '16px', display: 'flex', alignItems: 'center', gap: '20px', boxShadow: '0 2px 4px rgba(0,0,0,0.02)' },
     kpiIcon: { width: '50px', height: '50px', borderRadius: '12px', background: '#f8fafc', display: 'flex', justifyContent: 'center', alignItems: 'center' },
     kpiLabel: { margin: 0, color: '#64748b', fontSize: '14px' },
     kpiValue: { margin: 0, fontSize: '24px', fontWeight: '800' },
-    gridCharts: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '25px', marginBottom: '40px' },
+    gridCharts: { display: 'grid', gridTemplateColumns: '1fr', gap: '25px', marginBottom: '40px' },
     chartContainer: { background: 'white', padding: '20px', borderRadius: '16px', boxShadow: '0 2px 4px rgba(0,0,0,0.02)' },
     chartHeader: { display: 'flex', justifyContent: 'space-between', marginBottom: '15px' },
     btnExpand: { background: 'none', border: 'none', cursor: 'pointer', color: '#64748b' },
     bottomGrid: { display: 'grid', gridTemplateColumns: '1.5fr 1fr', gap: '25px' },
     rankingCard: { background: 'white', padding: '25px', borderRadius: '16px', boxShadow: '0 2px 4px rgba(0,0,0,0.02)' },
-    img: {
-    width: '45px',        // Tamaño ideal para que no rompa el diseño
-    height: '45px',
-    borderRadius: '10px', // Bordes suaves para un look moderno
-    objectFit: 'cover',   // Importante: mantiene la proporción sin deformar
-    border: '1px solid #f1f5f9', // Un borde sutil para definir la imagen
-    display: 'block'      // Quita espacios en blanco residuales
-},
+    img: { width: '45px', height: '45px', borderRadius: '10px', objectFit: 'cover', border: '1px solid #f1f5f9', display: 'block' },
     rankingItem: { display: 'flex', alignItems: 'center', gap: '15px', padding: '12px 0', borderBottom: '1px solid #f1f5f9' },
     rankNum: { width: '28px', height: '28px', borderRadius: '50%', background: '#f1f5f9', display: 'flex', justifyContent: 'center', alignItems: 'center', fontSize: '12px', fontWeight: 'bold' },
     rankSales: { background: '#fef3c7', color: '#92400e', padding: '4px 10px', borderRadius: '20px', fontSize: '12px', fontWeight: 'bold' },
@@ -373,7 +378,6 @@ const styles = {
     modalHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' },
     modalBody: { maxHeight: '60vh', overflowY: 'auto' },
     btnClose: { background: 'none', border: 'none', cursor: 'pointer', fontSize: '20px' },
-    // Estilos de Feedback
     feedbackItem: { background: '#f8fafc', padding: '15px', borderRadius: '12px', marginBottom: '12px', border: '1px solid #e2e8f0' },
     feedbackHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' },
     feedbackUser: { fontWeight: 'bold', color: '#1e293b', fontSize: '14px' },
