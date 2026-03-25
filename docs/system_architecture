@@ -1,0 +1,103 @@
+# System Architecture – BeanQuick
+
+Este documento describe la arquitectura general del sistema.
+
+---
+
+# High Level Architecture
+
+BeanQuick sigue una arquitectura **cliente-servidor**.
+
+```mermaid
+flowchart TB
+
+Client[React Frontend]
+
+API[Laravel Backend API]
+
+DB[(MySQL Database)]
+
+Payment[Mercado Pago]
+
+Client --> API
+API --> DB
+API --> Payment
+Payment --> API
+API --> Client
+```
+
+---
+
+# Backend Structure
+
+El backend sigue la arquitectura MVC de Laravel.
+
+```mermaid
+flowchart TB
+
+Routes --> Controllers
+Controllers --> Services
+Services --> Models
+Models --> Database
+```
+
+---
+
+# Frontend Structure
+
+Estructura principal del frontend:
+
+```mermaid
+flowchart TB
+
+App
+
+App --> Pages
+Pages --> Components
+Components --> API
+API --> Backend
+```
+
+---
+
+# Order Processing Flow
+
+```mermaid
+sequenceDiagram
+
+participant Cliente
+participant Frontend
+participant Backend
+participant MercadoPago
+participant Database
+
+Cliente->>Frontend: Selecciona productos
+Frontend->>Backend: Crear pedido
+Backend->>Database: Guardar pedido
+Frontend->>MercadoPago: Redirigir pago
+MercadoPago->>Backend: Confirmación de pago
+Backend->>Database: Actualizar estado
+Backend->>Frontend: Pedido pagado
+```
+
+---
+
+# Security Considerations
+
+El sistema implementa:
+
+- autenticación con Laravel Breeze
+- protección CSRF
+- validación de formularios
+- control de acceso por usuario
+
+---
+
+# Future Improvements
+
+Arquitectura futura podría incluir:
+
+- microservicios
+- colas de procesamiento
+- caché con Redis
+- contenedores Docker
